@@ -1,0 +1,53 @@
+# V2. - 20070921
+
+defutf8 on
+utf8 on on
+defencoding UTF-8
+hardstatus on
+hardstatus alwayslastline
+defscrollback 65535
+shelltitle $|bash         # for dynamic window title generation
+shell bash
+bell "Bell in window % "    # make bells in other windows audible
+autodetach on               # detach on hangup
+startup_message off         # don't display the copyright page
+vbell off
+truecolor on
+#backtick 0 1 1 date +'%e/%m %H:%M:%S'
+backtick 0 1 1 date +'%d/%m %H:%M:%S'
+backtick 1 3 3 head -c 4 /proc/loadavg
+# Tell screen NOT to write to the absolute last character of the line
+term screen-256color
+#termcapinfo st* lp@ # @st-256color lp@ # y u no work?!
+# termcapinfo stterm-256color lp@ # @st-256color lp@
+# termcapinfo stterm-256color 'ts=\E[?7l\E7\E[1;%dm:fs=\E[0m\E8\E[?7h'
+#cjkwidth on					# Assume unfamiliar chars are double width (for emojis without screen overflow) (doesn't work)
+#termcapinfo stterm-256color 
+# Inject Disable Auto-Wrap ( ?7l ) into the start of the status line
+# Inject Enable Auto-Wrap ( ?7h ) at the end
+#termcapinfo * 'ts=\E[?7l\E7\E[r\E[H\E[999H:fs=\E8\E[?7h'
+# Remove Auto-Margin (am@) and disable Last Position (lp@) for xterm variants
+termcapinfo xterm* am@:lp@
+
+#grrr
+multiuser off
+password none
+
+# trash pile
+
+#hardstatus string "%c:%s %M %d %H (%w) %1` %2` $PID %? %l%?"
+#time  "%c:%s %M %d %H%? %l%?"
+#backtick 1 1 1 date
+#defhstatus string "%c:%s %M %d %H (%w) %? %l%?" # ^E?
+#hardstatus string " c: s  M  d  H ?  l ? %s"
+#defhstatus " c: s  M  d  H ?  l ?"
+#backtick 2 1 1 env > /home/yair/set_screen
+
+#Stuff from Nir
+#hardstatus string '%{gk}[ %{G}%H %{g}][%{= kK}%-Lw%{= cb}%50>%n*%f %t%?(%u)%?%{=b kK}%+Lw%< %{= kK}%=%{g}][%{Y}%l%{g}]%{=b kC}[ %d/%m %c ]%{W}'
+#termcapinfo xterm|xterms|xs|rxvt ti@:te@
+
+
+
+
+

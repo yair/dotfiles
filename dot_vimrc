@@ -1,0 +1,74 @@
+" Standard settings
+set nu
+
+" Tabs
+set ts=4
+set expandtab
+set shiftwidth=4
+
+" Render spaces
+set list
+"set listchars=tab:▸\ ,space:·,trail:·,eol:¬,extends:>,precedes:<
+set listchars=tab:▸\ ,space:·,trail:·,extends:>,precedes:<
+
+" set spell
+syn on
+" color evening
+" color koehler
+color ron
+set visualbell t_vb=
+
+" For LaTex Suite
+filetype plugin on
+set grepprg=grep\ -nH\ $*
+filetype indent on
+set guifont=Courier\ New\ bold\ 14
+
+" Heb
+" (use convmv(1) to change file names)
+" (use easytag (1) to convert ID3 tags)
+set encoding=utf-8      " Internal editing encoding
+set fileencoding=utf-8  " Encoding for written files
+set termencoding=utf-8  " Terminal encoding (important for rendering)
+scriptencoding utf-8
+
+" Transpareng bg
+" Enable true color support (optional but recommended)
+"set termguicolors
+" Set the background of Normal group to transparent (no background color)
+highlight Normal ctermbg=NONE guibg=NONE
+" If using other color groups, you might want to clear their backgrounds as well
+highlight NonText ctermbg=NONE guibg=NONE
+
+set paste " Really?! As default?! Actually, that's nice.
+
+" The stooooopid lxplus termcap workaround
+"set t_kb=
+"fixdel
+
+au BufNewFile,BufRead *.elm setf elm
+
+" call plug#begin()
+" Plug 'tpope/vim-sensible'
+" call plug#end()
+
+" purescript
+syntax on
+filetype on
+filetype plugin indent on
+
+let purescript_indent_if = 3
+let purescript_indent_case = 5
+let purescript_indent_let = 4
+let purescript_indent_do = 3
+let purescript_indent_in = 1
+let purescript_indent_dot = v:true
+
+" Keep temp files out of the way, not to confuse SyncThing
+" Keep swap files, but store them in $HOME/tmp
+"set swapfile               " Doesn't that just say no swapfile? Maybe that's
+"                             vim is complaining when I open a file
+" The double slash at the end ensures files have full path, to avoid collisions
+set dir=$HOME/tmp/vimswap//
+" Ensure the directory exists
+silent !mkdir -p $HOME/tmp/vimswap
