@@ -7,6 +7,19 @@
 export RUSTFLAGS=""
 export DATABASE_URL=postgres://occam:occam_password@localhost:5432/occam
 
+# Force rust-analyzer to behave
+#--------------------------------
+# Prevent Node.js from ballooning
+export NODE_OPTIONS="--max-old-space-size=4096"
+
+# Enable the LSP tool (required for newer ClaudeCode versions)
+export ENABLE_LSP_TOOL=1
+
+# Force ALL tools to share the same background build folder
+# This prevents RA from recompiling your 1000+ deps for every editor
+export RUST_ANALYZER_TARGET_DIR="$HOME/.cache/rust-analyzer-shared"
+#--------------------------------
+
 #echo pretending to be TERM=$TERM
 #locale
 
