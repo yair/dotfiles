@@ -1,0 +1,52 @@
+layout {
+    pane // Your shell
+    
+    pane size=1 borderless=true {
+        plugin location="file:~/.config/zellij/plugins/zjstatus.wasm" {
+            // The main bar layout
+//            format_left  "{command_hostname}:#[fg=#89B4FA,bold]{session} 🐰🐰 {mode} #[fg=#89B4FA,bold] {tabs}"
+            format_left  "\/{command_hostname}\/#[fg=#89B4FA,bold]{session} 🐇🐇 {mode} #[fg=#89B4FA,bold] {tabs}"
+            format_right "{command_branch} {command_load} #[fg=#9399B2]{datetime}"
+            format_space ""
+
+            // --- MODE DEFINITIONS (The "Hints") ---
+            // These will show up in the {mode} section of the bar
+            //mode_normal        "#[bg=#89B4FA,fg=#181825,bold] NORMAL #[fg=#89B4FA,bg=#181825] (Ctrl-t:Tab / Ctrl-p:Pane) "
+            mode_normal        "#[bg=#89B4FA,fg=#181825,bold] N "
+/* t */     mode_tab           "#[bg=#FAB387,fg=#181825,bold] TAB #[fg=#FAB387,bg=#181825] [n]ew [x]close [r]ename [h/l]move "
+/* p */     mode_pane          "#[bg=#A6E3A1,fg=#181825,bold] PANE #[fg=#A6E3A1,bg=#181825] [n]ew [x]close [f]ullscreen "
+/* g */     mode_locked        "#[bg=#F38BA8,fg=#181825,bold] LOCKED #[fg=#F38BA8,bg=#181825] (Ctrl-g to Unlock) "
+/* n */     mode_resize        "#[bg=#F9E2AF,fg=#181825,bold] RESIZE #[fg=#F9E2AF,bg=#181825] [h/j/k/l] "
+/* s */     mode_scroll        "#[bg=#CBA6F7,fg=#181825,bold] SCROLL #[fg=#CBA6F7,bg=#181825] [e]dit "
+/* o */	    mode_session       "#[bg=#94E2D5,fg=#181825,bold] SESSION #[fg=#94E2D5,bg=#181825] [d]etach [r]eload [c]onf "
+		
+            // Hostname
+            command_hostname_command    "sh -c \"/usr/bin/cat /etc/hostname\""
+            command_hostname_format "#[fg=#FA83B7]{stdout}"
+//            command_hostname_format "#[fg=#FA83B7]📦{stdout}▶"
+            command_hostname_interval   "0"
+		
+            // Tab configuration: {name} will show the running executable
+            tab_normal   "#[fg=#6C7086] {name} "
+            tab_active   "#[fg=#A6E3A1,bold,underscore] {name} "
+
+			command_branch_command "/usr/bin/bash -c 'git branch --show-current || echo N/A'"
+			command_branch_format  "#[fg=#88EE88]🌿{stdout}"
+            command_branch_interval   "10"
+
+            // Simplified Load: Reads the 1-minute load average directly
+            // We use 'cut' to get the first decimal. 
+            command_load_command    "sh -c \"cut -d' ' -f1 /proc/loadavg\""
+            command_load_format     "#[fg=#FAB387]🌋{stdout}"
+            command_load_interval   "5"
+
+            // Date and Time
+            datetime          "#[fg=#F9E2AF] {format} "
+            datetime_format   "%y-%m-%d %H:%M"
+            datetime_timezone "CET" // Change to your local TZ if needed
+
+	    // Update tab name
+	    tab_rename_timeout "1"
+        }
+    }
+}

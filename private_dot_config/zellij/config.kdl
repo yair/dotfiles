@@ -1,0 +1,23 @@
+// Do not restore previous sessions automatically
+session_serialization false
+
+// Hide the pane frames (the borders with names) to save space
+pane_frames false
+
+// Load our custom layout by default
+//bb default_layout "screen-style"
+default_layout "screen-style"
+
+// Automatically quit when the last pane/tab is closed
+on_force_close "quit"
+
+// Get paste back (Ah, it's Ctrl-Shift-V now)
+mouse_mode false
+
+// Simplified UI
+ui {
+    pane_frames {
+        rounded_corners true
+    }
+}
+
