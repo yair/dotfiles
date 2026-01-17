@@ -1,0 +1,19 @@
+{
+  "enabledPlugins": {
+    "rust-analyzer-lsp@claude-plugins-official": true
+  },
+  "lspServers": {
+    "rust-analyzer": {
+      "command": "rustup",
+      "args": ["run", "stable", "rust-analyzer"],
+      "initializationOptions": {
+        "cargo": { "buildScripts": { "enable": false } },
+        "procMacro": { "enable": false },
+        "checkOnSave": false,
+        "cachePriming": { "enable": false },
+        "lru": { "capacity": 64 },
+        "files": { "maxMemoryMB": 1024 }
+      }
+    }
+  }
+}
