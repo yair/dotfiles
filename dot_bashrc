@@ -2,6 +2,11 @@
 # see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
 # for examples
 
+# Occam stuffs
+#export RUSTFLAGS="-W todo"
+export RUSTFLAGS=""
+export DATABASE_URL=postgres://occam:occam_password@localhost:5432/occam
+
 #echo pretending to be TERM=$TERM
 #locale
 
@@ -27,8 +32,16 @@ export LANG="en_US.UTF-8"
 export LANGUAGE="en_US:en"
 export LC_ALL="en_US.UTF-8"
 export LC_CTYPE="en_US.UTF-8"
+
+export EDITOR=vim
 export VISUAL=vim
+#alias nv=nvim
+#alias vim=vim
+#alias neovim=nvim
 #stty iutf8
+za() {
+    zellij attach "$1" --create
+}
 
 #unmute corwin
 # amixer -c 0 sset Headphone 100% unmute ### move to rc.local
@@ -38,8 +51,19 @@ if [ -f /usr/bin/xset ]; then
     xset b 0
 fi
 
+
+# For when we're not in zellij
+zellij list-sessions
+
+# For when we're in zellij
+# zellij action rename-tab "$(ps -o comm= -p $(($(ps -o ppid= -p $$))))"
+# auto-rename tab to running command
+# precmd() { zellij action rename-tab "${PWD##*/}" 2>/dev/null; }
+
 #screen
-export PROMPT_COMMAND='echo -n -e "\033k\033\0134"'
+#export PROMPT_COMMAND='echo -n -e "\033k\033\0134"'
+# zellij 20260208
+unset PROMPT_COMMAND
 
 #   lxplus version
 #    screen -X hardstatus string "%{gk}[ %{G}%H.$STY %{g}][%{= kK}%-Lw%{= cb}%50>%n*%f %t%?(%u)%?%{=b kK}%+Lw%< %{= kK}%=%{g}][%{Y}%-15=%l%-11=%{g}]%{=b kC}[%d-%c]%{W}"
@@ -56,8 +80,10 @@ export PROMPT_COMMAND='echo -n -e "\033k\033\0134"'
 #screen -X hardstatus string '%{7}[%{b3}%H%{7}.%{b6}%S%{7}][%{7}%{= ky}%-Lw%{= gb}%n*%f %t%?(%u)%?%{= kc}%+Lw%< %{= kK}%=%{w}]%{7}[%{=b B}%l%{6}%1`%{7}][%{3}%`%{7}]%{7}'
 # fang 20251119
 #screen -X hardstatus string '%{= 7}[%{+b M}%H%{= kd}.%{+b W}%S%{= kd}] [%{= kd}%{= ky}%-Lw%{= gb}%n*%f %t%?(%u)%?%{= kc}%+Lw%< %{= kK}%=%{w}] %{= 7}[%{= kC}%l%{6}%{= 7}] [%{= kY}%`%{= kd}]'
-screen -X hardstatus string '%{= 7}[%{+b M}%H%{= kd}.%{+b W}%S%{= kd}] 🐇🐇 [%{= kd}%{= ky}%-Lw%{= gb}%n*%f %t%?(%u)%?%{= kc}%+Lw%< %{= kK}%=%{w}] %{= 7}[%{= kC}%l%{6}%{= 7}] [%{= kY}%`%{= kd}] '
-#screen -X hardstatus string '%{= 7}[%{+b M}%H%{= kd}.%{+b W}%S%{= kd}] 🐇🐇 [%{= kd}%{= ky}%-Lw%{= gb}%n*%f %t%?(%u)%?%{= kc}%+Lw%< %{= kK}%{w}] %{= 7}[%{= kC}%l%{6}%{= 7}] [%{= kY}%`%{= kd}]' # no springs!
+#screen -X hardstatus string '%{= 7}[%{+b M}%H%{= kd}.%{+b W}%S%{= kd}] 🐇🐇 [%{= kd}%{= ky}%-Lw%{= gb}%n*%f %t%?(%u)%?%{= kc}%+Lw%< %{= kK}%=%{w}] %{= 7}[%{= kC}%l%{6}%{= 7}] [%{= kY}%`%{= kd}] '
+screen -X hardstatus string '%{= 7}[%{+b M}%H%{= kd}.%{+b W}%S%{= kd}] 🐇🐇 [%{= kd}%{= ky}%-Lw%{= gb}%n*%f %t%?(%u)%?%{= kc}%+Lw%< %{= kK}%{w}] %{= 7}[%{= kC}%l%{6}%{= 7}] [%{= kY}%`%{= kd}]' # no springs!
+# fang 20251223
+#screen -X hardstatus string '%{= 7}[%{+b M}%H%{= kd}.%{+b W}%S%{= kd}] 🐇🐇 [%{= kd}%{= ky}%-Lw%{= gb}%n*%f %t%?(%u)%?%{= kc}%+Lw%< %{= kK}%=%{w}] %2 %{= 7}[%{= kC}%l%{6}%{= 7}] [%{= kY}%`%{= kd}] '
 
 
 # don't put duplicate lines in the history. See bash(1) for more options
@@ -220,3 +246,6 @@ unset __conda_setup
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+# opencode
+export PATH=/home/yair/.opencode/bin:$PATH

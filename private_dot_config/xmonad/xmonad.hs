@@ -55,7 +55,8 @@ import XMonad.Actions.GridSelect
 myTerminal :: String
 --myTerminal = "alacritty"
 --myTerminal = "xterm"
-myTerminal = "/usr/local/bin/st"
+--myTerminal = "/usr/local/bin/st"
+myTerminal = "/usr/bin/wezterm"
 
 -- CHOICE 2: Application Launcher  
 -- Options: "rofi -show drun", "dmenu_run", "rofi -show run"
@@ -183,7 +184,7 @@ myStartupHook = do
     
     -- CHOICE 4: Compositor
     -- picom for transparency, shadows, and animations
-    spawnOnce "picom --config ~/.config/picom/picom.conf &"
+--    spawnOnce "picom --config ~/.config/picom/picom.conf &" -- Freezes the screen sometimes
     
     -- CHOICE 5: Wallpaper Setter
     -- Option A: nitrogen (GUI for selecting wallpapers)
@@ -228,7 +229,7 @@ myStartupHook = do
     -- spawnOnce "xinput set-prop 'SynPS/2 Synaptics TouchPad' 'libinput Tapping Enabled' 1 &"
 
     -- Neko!!1!
-    spawnOnce "oneko -tofocus &"
+--    spawnOnce "oneko -tofocus &"
 
 --------------------------------------------------------------------------------
 -- SCRATCHPADS - Dropdown terminals and floating windows

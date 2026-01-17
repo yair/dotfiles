@@ -7,9 +7,9 @@ set expandtab
 set shiftwidth=4
 
 " Render spaces
-set list
-"set listchars=tab:▸\ ,space:·,trail:·,eol:¬,extends:>,precedes:<
-set listchars=tab:▸\ ,space:·,trail:·,extends:>,precedes:<
+"set list
+""set listchars=tab:▸\ ,space:·,trail:·,eol:¬,extends:>,precedes:<
+"set listchars=tab:▸\ ,space:·,trail:·,extends:>,precedes:<
 
 " set spell
 syn on
