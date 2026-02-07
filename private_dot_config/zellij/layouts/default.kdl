@@ -1,0 +1,20 @@
+layout {
+    // status-bar pane (borderless, height 2)
+    pane size=2 borderless=true {
+        plugin location="file:///home/YOUR-USER/.local/bin/zjstatus.wasm" {
+            format_left   "{session} {hostname} {load}"
+            format_center ""
+            format_right  "{datetime}"
+            format_space  " "
+
+            session        true
+            hostname       true
+            load           true
+            datetime       true
+            load_format   "{1m} {5m} {15m}"
+            datetime_format "%F %T"
+        }
+    }
+    // normal shell pane (occupies the rest)
+    pane
+}

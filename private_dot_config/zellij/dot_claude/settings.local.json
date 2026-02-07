@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(zellij:*)",
+      "Bash(echo:*)",
+      "Bash(basename:*)",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "WebFetch(domain:jcd.pub)",
+      "WebFetch(domain:haseebmajid.dev)",
+      "WebFetch(domain:docs.rs)"
+    ]
+  }
+}

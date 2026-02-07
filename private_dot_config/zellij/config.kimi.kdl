@@ -1,0 +1,39 @@
+// These hopefully prevent zellij forcing things on us.
+//default_layout "shell-only"
+default_layout "convoluted"
+on_force_close "quit"
+
+// Don't waste real estate
+pane_frames false
+
+load_plugins {
+    "file:///home/yair/.local/bin/zjstatus.wasm" {
+        // left section
+        format_left   "{session} {hostname} {load} "
+        // centre section (empty)
+        format_center ""
+        // right section
+        format_right  "{datetime} {tab_name}"
+        // separators
+        format_space  " "
+
+        // --- widgets ---
+        session        true
+        hostname       true
+        load           true
+        datetime       true
+        tab_name       true
+
+        // load average labels
+        load_format   "{1m} {5m} {15m}"
+
+        // 24-hour clock + date
+        datetime_format "%F %T"
+
+        // colours (optional, hex or 256)
+        session_format  "#[fg=cyan,bold]{text}#[fg=white]:"
+        hostname_format "#[fg=green]{text}"
+        load_format     "#[fg=yellow]{text}"
+        datetime_format "#[fg=blue]{text}"
+    }
+}

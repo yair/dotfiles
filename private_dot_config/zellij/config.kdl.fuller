@@ -1,0 +1,72 @@
+default_layout "shell-only"
+on_force_close "quit"
+
+// ~/.config/zellij/config.kdl  (or the path shown above)
+keybinds {
+    // drop the default lock key
+    unbind "Ctrl g"
+    // enter tmux mode with Ctrl-a
+    shared {
+        bind "Ctrl a" { SwitchToMode "Tmux"; }
+    }
+    // --- now inside tmux mode ---
+    tmux {
+        // prefix again sends ^A to the app
+        bind "Ctrl a" { WriteChars ""; SwitchToMode "Normal"; }
+        // everyday commands
+        bind "c" { NewTab; SwitchToMode "Normal"; }
+        bind "n" { GoToNextTab; SwitchToMode "Normal"; }
+        bind "p" { GoToPreviousTab; SwitchToMode "Normal"; }
+        bind "\"" { SwitchToMode "Tab"; }   // picker
+        bind "d" { Detach; }
+    }
+}
+
+// optional: start in unlocked state so first C-a works immediately
+default_mode "normal"
+
+pane_frames false
+
+//plugins {
+    // comment out or remove the old status-bar
+//    status-bar location="zellij:status-bar"
+    // compact-bar location="zellij:compact-bar"
+//}
+
+// ----------  zjstatus status-bar  ----------
+// hide the old one
+simplified_ui true
+pane_frames false
+
+// load the plugin once per session
+load_plugins {
+    "file:///home/yair/.local/bin/zjstatus.wasm" {
+        // left section
+        format_left   "{session} {hostname} {load} "
+        // centre section (empty)
+        format_center ""
+        // right section
+        format_right  "{datetime} {tab_name}"
+        // separators
+        format_space  " "
+
+        // --- widgets ---
+        session        true
+        hostname       true
+        load           true
+        datetime       true
+        tab_name       true
+
+        // load average labels
+        load_format   "{1m} {5m} {15m}"
+
+        // 24-hour clock + date
+        datetime_format "%F %T"
+
+        // colours (optional, hex or 256)
+        session_format  "#[fg=cyan,bold]{text}#[fg=white]:"
+        hostname_format "#[fg=green]{text}"
+        load_format     "#[fg=yellow]{text}"
+        datetime_format "#[fg=blue]{text}"
+    }
+}

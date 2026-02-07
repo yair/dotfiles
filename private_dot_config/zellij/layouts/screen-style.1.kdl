@@ -1,0 +1,32 @@
+layout {
+    pane // This is your main shell pane
+    
+    // The status bar at the bottom
+    pane size=1 borderless=true {
+        plugin location="file:~/.config/zellij/plugins/zjstatus.wasm" {
+            // Formatting the output
+            format_left  "{hostname} {session} 🐰🐰 #[fg=#89B4FA,bold]{tabs}"
+            format_right "{command_load} #[fg=#9399B2]{datetime}"
+            format_space ""
+
+            // Tab styling (executable name)
+            tab_normal   "#[fg=#6C7086] {name} "
+            tab_active   "#[fg=#A6E3A1,bold,underscore] {name} "
+
+            // Hostname command
+            command_hostname_command  "hostname"
+            command_hostname_format   "#[fg=#F38BA8,bold]{stdout} "
+            command_hostname_interval "0"
+
+            // System Load command (Extracts load averages from 'uptime')
+            command_load_command    "uptime | awk -F'load average:' '{print $2}' | sed 's/,//g'"
+            command_load_format     "#[fg=#FAB387]Load:{stdout}"
+            command_load_interval   "5"
+
+            // Date and Time
+            datetime          "#[fg=#F9E2AF] {format} "
+            datetime_format   "%Y-%m-%d %H:%M"
+            datetime_timezone "Europe/Berlin" // Change to your timezone
+        }
+    }
+}

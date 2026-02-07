@@ -1,0 +1,16 @@
+layout {
+    pane borderless=true {
+        // load zjstatus **and** the shell in the **same** pane
+        plugin location="file:///home/yair/.local/bin/zjstatus.wasm" {
+            format_left   "{session} {hostname} {load}"
+            format_right  "{datetime}"
+            session true
+			hostname true
+			load true
+			datetime true
+            load_format   "{1m}"
+            datetime_format "%H:%M"
+        }
+        // shell is started automatically after the plug-in
+    }
+}
