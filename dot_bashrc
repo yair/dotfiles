@@ -68,15 +68,37 @@ fi
 # For when we're not in zellij
 zellij list-sessions
 
-# For when we're in zellij
-# zellij action rename-tab "$(ps -o comm= -p $(($(ps -o ppid= -p $$))))"
-# auto-rename tab to running command
-# precmd() { zellij action rename-tab "${PWD##*/}" 2>/dev/null; }
-
-#screen
-#export PROMPT_COMMAND='echo -n -e "\033k\033\0134"'
-# zellij 20260208
-unset PROMPT_COMMAND
+# Auto-rename tabs/windows to the running command, for whichever multiplexer we're in
+if [[ -n "$ZELLIJ" ]]; then
+    # Zellij: rename tab to running command via DEBUG trap, back to "bash" at prompt
+    # (mirrors GNU Screen behavior: shows running process, "bash" when idle)
+    _zellij_exec=""
+    _zellij_preexec() {
+        [[ -n "$_zellij_exec" ]] && return   # already fired for this command
+        local cmd="$1"
+        [[ "$cmd" == _zellij_* ]] && return  # skip our own hooks
+        [[ "$cmd" == zellij\ * ]] && return  # skip our own zellij calls
+        _zellij_exec=1
+        local base="${cmd%% *}"
+        base="${base##*/}"
+        zellij action rename-tab "$base" 2>/dev/null
+    }
+    # Defer the DEBUG trap until the first prompt — installing it now would
+    # fire for every remaining line while .bashrc (and sourced scripts) load.
+    _zellij_prompt() {
+        if [[ -z "$_zellij_trap_set" ]]; then
+            trap '_zellij_preexec "$BASH_COMMAND"' DEBUG
+            _zellij_trap_set=1
+        fi
+        zellij action rename-tab "bash" 2>/dev/null
+        _zellij_exec=""   # reset guard so next user command fires
+    }
+    PROMPT_COMMAND="_zellij_prompt;${PROMPT_COMMAND:-}"
+elif [[ -n "$STY" ]]; then
+    # GNU Screen: the \033k...\033\\ escape resets the window title so Screen
+    # auto-fills it with the currently running command
+    PROMPT_COMMAND='echo -n -e "\033k\033\0134"'
+fi
 
 #   lxplus version
 #    screen -X hardstatus string "%{gk}[ %{G}%H.$STY %{g}][%{= kK}%-Lw%{= cb}%50>%n*%f %t%?(%u)%?%{=b kK}%+Lw%< %{= kK}%=%{g}][%{Y}%-15=%l%-11=%{g}]%{=b kC}[%d-%c]%{W}"
