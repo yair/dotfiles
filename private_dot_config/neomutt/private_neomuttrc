@@ -1,0 +1,51 @@
+# albanialink.com — local IMAPS (cert is for mail.albanialink.com, skip verify for localhost)
+
+# TLS — accept localhost with mail.albanialink.com cert
+set ssl_verify_host = no
+set ssl_starttls = yes
+
+# Account
+set from = "yair@albanialink.com"
+set realname = "Yair"
+
+# IMAP
+set imap_user = "yair@albanialink.com"
+set imap_pass = "EeCxuIp1jGUsHYpFGn4ZKEQFG5fk2ill"
+set folder = "imaps://localhost:993"
+set spoolfile = "+INBOX"
+set postponed = "+Drafts"
+set trash = "+Trash"
+set record = "+Sent"
+
+# SMTP — localhost implicit TLS
+set smtp_url = "smtps://yair%40albanialink.com@localhost:465"
+set smtp_pass = "EeCxuIp1jGUsHYpFGn4ZKEQFG5fk2ill"
+
+# Check mail every 60 seconds
+set mail_check = 60
+set timeout = 30
+
+# Display
+set sort = reverse-date
+set index_format = "%4C %Z %{%b %d} %-20.20L %s"
+set date_format = "%d/%m/%y %H:%M"
+set pager_stop = yes
+set markers = no
+set smart_wrap = yes
+
+# Sidebar (folder list)
+set sidebar_visible = yes
+set sidebar_width = 24
+set sidebar_format = "%D%* %N"
+bind index,pager \Cp sidebar-prev
+bind index,pager \Cn sidebar-next
+bind index,pager \Co sidebar-open
+
+# Vim-ish bindings
+bind index j next-entry
+bind index k previous-entry
+bind index G last-entry
+bind index g noop
+bind index gg first-entry
+bind pager j next-line
+bind pager k previous-line
