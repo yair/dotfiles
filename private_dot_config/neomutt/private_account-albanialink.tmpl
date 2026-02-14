@@ -1,0 +1,18 @@
+# albanialink.com account
+set from = "yair@albanialink.com"
+set realname = "Yair"
+set imap_user = "yair@albanialink.com"
+set imap_pass = $my_al_pass
+{{ if eq .chezmoi.hostname "albanialink" -}}
+set folder = "imaps://localhost:993"
+set smtp_url = "smtps://yair%40albanialink.com@localhost:465"
+set ssl_verify_host = no
+{{ else -}}
+set folder = "imaps://mail.albanialink.com:993"
+set smtp_url = "smtps://yair%40albanialink.com@mail.albanialink.com:465"
+{{ end -}}
+set smtp_pass = $my_al_pass
+set spoolfile = "+INBOX"
+set postponed = "+Drafts"
+set trash = "+Trash"
+set record = "+Sent"

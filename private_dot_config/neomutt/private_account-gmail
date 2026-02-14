@@ -1,0 +1,13 @@
+# Gmail account
+set from = "yairmlll@gmail.com"
+set realname = "Yair"
+set imap_user = "yairmlll@gmail.com"
+set imap_pass = $my_gmail_pass
+set folder = "imaps://imap.gmail.com:993"
+set smtp_url = "smtps://yairmlll%40gmail.com@smtp.gmail.com:465"
+set smtp_pass = $my_gmail_pass
+set spoolfile = "+INBOX"
+set postponed = "+[Gmail]/Drafts"
+set trash = "+[Gmail]/Trash"
+set record = "+[Gmail]/Sent Mail"
+set ssl_verify_host = yes

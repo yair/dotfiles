@@ -1,0 +1,42 @@
+# Multi-account neomutt config
+
+# Passwords (GPG-encrypted, sets $my_al_pass and $my_gmail_pass)
+source "gpg -d ~/.config/neomutt/passwords.gpg|"
+
+# Default account
+source ~/.config/neomutt/account-albanialink
+
+# Account switching: F2 = albanialink, F3 = Gmail
+macro index <F2> '<sync-mailbox><enter-command>source ~/.config/neomutt/account-albanialink<enter><change-folder>!<enter>' "Switch to albanialink"
+macro index <F3> '<sync-mailbox><enter-command>source ~/.config/neomutt/account-gmail<enter><change-folder>!<enter>' "Switch to Gmail"
+macro pager <F2> '<exit><sync-mailbox><enter-command>source ~/.config/neomutt/account-albanialink<enter><change-folder>!<enter>' "Switch to albanialink"
+macro pager <F3> '<exit><sync-mailbox><enter-command>source ~/.config/neomutt/account-gmail<enter><change-folder>!<enter>' "Switch to Gmail"
+
+# Check mail every 60 seconds
+set mail_check = 60
+set timeout = 30
+
+# Display
+set sort = reverse-date
+set index_format = "%4C %Z %{%b %d} %-20.20L %s"
+set date_format = "%d/%m/%y %H:%M"
+set pager_stop = yes
+set markers = no
+set smart_wrap = yes
+
+# Sidebar (folder list)
+set sidebar_visible = yes
+set sidebar_width = 24
+set sidebar_format = "%D%* %N"
+bind index,pager \Cp sidebar-prev
+bind index,pager \Cn sidebar-next
+bind index,pager \Co sidebar-open
+
+# Vim-ish bindings
+bind index j next-entry
+bind index k previous-entry
+bind index G last-entry
+bind index g noop
+bind index gg first-entry
+bind pager j next-line
+bind pager k previous-line
