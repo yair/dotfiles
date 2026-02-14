@@ -15,6 +15,10 @@ macro pager <F3> '<exit><sync-mailbox><enter-command>source ~/.config/neomutt/ac
 # IMAP — auto-discover folders for sidebar
 set imap_check_subscribed = yes
 
+# Cache headers locally (avoids re-downloading 90k Gmail headers)
+set header_cache = ~/.cache/neomutt
+set message_cachedir = ~/.cache/neomutt
+
 # Check mail every 60 seconds
 set mail_check = 60
 set timeout = 30
