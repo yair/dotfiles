@@ -12,6 +12,9 @@ macro index <F3> '<sync-mailbox><enter-command>source ~/.config/neomutt/account-
 macro pager <F2> '<exit><sync-mailbox><enter-command>source ~/.config/neomutt/account-albanialink<enter><change-folder>!<enter>' "Switch to albanialink"
 macro pager <F3> '<exit><sync-mailbox><enter-command>source ~/.config/neomutt/account-gmail<enter><change-folder>!<enter>' "Switch to Gmail"
 
+# IMAP — auto-discover folders for sidebar
+set imap_check_subscribed = yes
+
 # Check mail every 60 seconds
 set mail_check = 60
 set timeout = 30
