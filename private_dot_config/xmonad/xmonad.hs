@@ -53,10 +53,10 @@ import XMonad.Actions.GridSelect
 -- CHOICE 1: Terminal Emulator
 -- Options: "alacritty", "kitty", "wezterm", "xterm"
 myTerminal :: String
---myTerminal = "alacritty"
+myTerminal = "alacritty"
 --myTerminal = "xterm"
 --myTerminal = "/usr/local/bin/st"
-myTerminal = "/usr/bin/wezterm"
+--myTerminal = "/usr/bin/wezterm"
 
 -- CHOICE 2: Application Launcher  
 -- Options: "rofi -show drun", "dmenu_run", "rofi -show run"
