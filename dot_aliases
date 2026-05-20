@@ -6,3 +6,7 @@
 
 alias whatismyip='dig +short myip.opendns.com @resolver1.opendns.com'
 alias dual='autorandr dual'   # switch to saved 'dual' monitor profile (X-only)
+# Daily-driver Claude Code launcher: dangerous-skip-permissions + high effort
+# + continue last session. Mirrors the effortLevel/skipDangerousModePermissionPrompt
+# settings keys in ~/.claude/settings.json, in case those aren't honored.
+alias code='claude --allow-dangerously-skip-permissions --effort high --continue'
