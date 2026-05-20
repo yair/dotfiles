@@ -220,7 +220,7 @@ myStartupHook = do
     
     -- Blue light filter (adjust coordinates to your location)
 --    spawnOnce "redshift -l 41.3:-19.8 &"
-    spawnOnce "redshift -c /home/yair/.config/redshift/redshift.conf  &"
+    spawnOnce "redshift -c $HOME/.config/redshift/redshift.conf  &"
     
     -- Set keyboard layout
     -- spawnOnce "setxkbmap -layout us &"
