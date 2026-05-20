@@ -1,0 +1,4 @@
+# ~/.zshenv — sourced for ALL zsh shells (interactive, non-interactive, login).
+# Keep minimal: env only, no interactive bits.
+
+[ -r "$HOME/.config/shell/env.sh" ] && . "$HOME/.config/shell/env.sh"

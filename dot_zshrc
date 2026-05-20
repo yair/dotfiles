@@ -1,0 +1,13 @@
+# ~/.zshrc — sourced for INTERACTIVE zsh shells.
+#
+# Shared interactive config lives in ~/.config/shell/interactive.sh.
+# zsh-specific bits (prompt, compinit, history options, precmd/preexec) below.
+
+[ -r "$HOME/.config/shell/env.sh" ]         && . "$HOME/.config/shell/env.sh"
+[ -r "$HOME/.config/shell/interactive.sh" ] && . "$HOME/.config/shell/interactive.sh"
+
+# --- zsh-specific (filled during triage / build) ----------------------------
+# setopt SHARED_HISTORY HIST_IGNORE_DUPS HIST_IGNORE_SPACE EXTENDED_HISTORY
+# autoload -Uz compinit && compinit
+# PROMPT='...'         # mirrors bash PS1
+# precmd() { ... }     # dynamic window title for tmux
