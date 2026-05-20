@@ -1,0 +1,8 @@
+# ~/.aliases — shared aliases for bash and zsh.
+#
+# Sourced from ~/.config/shell/interactive.sh. Add new aliases here so both
+# shells pick them up. Keep this file aliases-only — functions and helpers
+# belong in ~/.config/shell/interactive.sh (shared) or the per-shell rc.
+
+alias whatismyip='dig +short myip.opendns.com @resolver1.opendns.com'
+alias dual='autorandr dual'   # switch to saved 'dual' monitor profile (X-only)

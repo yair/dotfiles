@@ -28,10 +28,15 @@ _prepend_path "$HOME/.local/bin"        # user scripts (brain-mcp, etc.)
 [ -r "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
 
 # --- Locale -----------------------------------------------------------------
-# (set during triage)
+# LANG sets every LC_* category implicitly. We deliberately do NOT set LC_ALL
+# (it overrides everything and confuses tools that try to honor per-category
+# overrides). LANGUAGE is GNU gettext's message-translation fallback chain.
+export LANG="en_US.UTF-8"
+export LANGUAGE="en_US:en"
 
 # --- Editor -----------------------------------------------------------------
-# (set during triage)
+export EDITOR=vim
+export VISUAL=vim
 
 # --- Project / tool env -----------------------------------------------------
 # Cap Node.js heap so Claude Code / TUI tools don't balloon.

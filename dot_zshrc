@@ -6,8 +6,32 @@
 [ -r "$HOME/.config/shell/env.sh" ]         && . "$HOME/.config/shell/env.sh"
 [ -r "$HOME/.config/shell/interactive.sh" ] && . "$HOME/.config/shell/interactive.sh"
 
-# --- zsh-specific (filled during triage / build) ----------------------------
-# setopt SHARED_HISTORY HIST_IGNORE_DUPS HIST_IGNORE_SPACE EXTENDED_HISTORY
-# autoload -Uz compinit && compinit
-# PROMPT='...'         # mirrors bash PS1
-# precmd() { ... }     # dynamic window title for tmux
+# --- History (zsh-specific; shared HISTSIZE lives in interactive.sh) --------
+SAVEHIST=65535
+setopt EXTENDED_HISTORY      # timestamps in history file
+setopt SHARE_HISTORY         # live bidirectional sync across sessions
+setopt HIST_IGNORE_DUPS      # don't save consecutive duplicates
+setopt HIST_IGNORE_SPACE     # don't save commands starting with a space
+setopt HIST_REDUCE_BLANKS    # collapse repeated whitespace
+setopt HIST_VERIFY           # show expanded !! before executing (safety)
+
+# Up/Down arrow: history search by current command prefix (zsh equivalent of
+# the bash `bind '"\e[A"':history-search-backward` from the legacy .bashrc).
+autoload -Uz up-line-or-beginning-search down-line-or-beginning-search
+zle -N up-line-or-beginning-search
+zle -N down-line-or-beginning-search
+bindkey '^[[A' up-line-or-beginning-search
+bindkey '^[[B' down-line-or-beginning-search
+
+# --- Completion -------------------------------------------------------------
+# autoload -Uz compinit && compinit       # to be added during final rewrite
+
+# --- Prompt -----------------------------------------------------------------
+# Same visual as the bash PS1: bold-green user @ bold-magenta host : bold-blue
+# cwd, bold-yellow % (or # for root). zsh's %# emits the right one.
+PROMPT='%F{green}%B%n%b%f@%F{magenta}%B%m%b%f:%F{blue}%B%~%b%f%F{yellow}%B%#%b%f '
+
+# --- Window title -----------------------------------------------------------
+# Mirrors the bash OSC-0 escape. Inside tmux: overridden by tmux's own title
+# management. Outside tmux: useful alacritty window title.
+[ "$TERM" != "dumb" ] && precmd() { print -Pn '\e]0;%n@%m: %~\a' }
