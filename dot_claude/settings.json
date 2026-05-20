@@ -1,18 +1,49 @@
 {
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "notify-send 'Claude Code' \"Turn complete in $(basename $CLAUDE_PROJECT_DIR) — waiting for input\""
+          }
+        ]
+      }
+    ]
+  },
   "enabledPlugins": {
     "rust-analyzer-lsp@claude-plugins-official": true
   },
+  "effortLevel": "high",
+  "skipDangerousModePermissionPrompt": true,
   "lspServers": {
     "rust-analyzer": {
       "command": "rustup",
-      "args": ["run", "stable", "rust-analyzer"],
+      "args": [
+        "run",
+        "stable",
+        "rust-analyzer"
+      ],
       "initializationOptions": {
-        "cargo": { "buildScripts": { "enable": false } },
-        "procMacro": { "enable": false },
+        "cargo": {
+          "buildScripts": {
+            "enable": false
+          }
+        },
+        "procMacro": {
+          "enable": false
+        },
         "checkOnSave": false,
-        "cachePriming": { "enable": false },
-        "lru": { "capacity": 64 },
-        "files": { "maxMemoryMB": 1024 }
+        "cachePriming": {
+          "enable": false
+        },
+        "lru": {
+          "capacity": 64
+        },
+        "files": {
+          "maxMemoryMB": 1024
+        }
       }
     }
   }

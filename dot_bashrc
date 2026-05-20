@@ -33,6 +33,7 @@ alias gputemp='primusrun nvidia-smi -i 0 --query-gpu=temperature.gpu --format=cs
 alias whatismyip='dig +short myip.opendns.com @resolver1.opendns.com'
 #alias st="/usr/local/bin/st -f 'Liberation Mono:pixelsize=18:antialias=true:autohint=true'"
 alias dual="autorandr dual"
+alias code='claude --allow-dangerously-skip-permissions --effort high --continue'
 
 # If not running interactively, don't do anything
 case $- in
@@ -284,3 +285,5 @@ export NVM_DIR="$HOME/.nvm"
 
 # opencode
 export PATH=/home/yair/.opencode/bin:$PATH
+alias py="~/venvs/default/bin/python3"
+alias pip="~/venvs/default/bin/pip"

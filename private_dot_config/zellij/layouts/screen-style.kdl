@@ -42,7 +42,7 @@ layout {
 
             // Date and Time
             datetime          "#[fg=#F9E2AF] {format} "
-            datetime_format   "%y-%m-%d %H:%M"
+            datetime_format   "%y-%m-%d %H:%M:%S"
             datetime_timezone "CET" // Change to your local TZ if needed
 
 	    // Update tab name

@@ -5,3 +5,5 @@
 	tool = bc4
 [difftool "bcompare"]
 	path = /usr/bin/bcompare
+[core]
+	hooksPath = /home/yair/.config/git/hooks
