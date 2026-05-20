@@ -1,0 +1,36 @@
+# ~/.config/alacritty/alacritty.toml
+#
+# Classic xterm/rxvt mouse + clipboard behavior, ported from the previously
+# stranded ~/.config/wezterm/wezterm.lua spec (wezterm captured the intent
+# but the system actually runs alacritty). Most of this is alacritty default
+# behavior; explicit settings here pin the parts worth pinning.
+#
+#   - drag-select copies to PRIMARY selection         (alacritty default)
+#   - double-click selects word; triple-click line    (alacritty default)
+#   - middle-click pastes PRIMARY                     (alacritty default)
+#   - Shift-click overrides app mouse tracking        (alacritty default)
+#   - Ctrl-Shift-C / Ctrl-Shift-V use CLIPBOARD       (alacritty default)
+#   - wheel scrolls scrollback, 5 lines per notch     (explicit below)
+#   - selection stays in PRIMARY only, not CLIPBOARD  (explicit below)
+#
+# About "no cursor reposition on click in vim/nvim": that's the application's
+# mouse mode, not alacritty's. tmux runs with `mouse off` so mouse events
+# reach the terminal directly (never the app inside tmux). For vim/nvim
+# outside tmux -- or if they still grab the mouse anyway -- set `mouse=`
+# (empty) in their respective configs. Deferred to the vim/nvim follow-on.
+
+[scrolling]
+history = 100000        # generous local scrollback (real recall = shell history)
+multiplier = 5          # 5 lines per wheel notch (matches the wezterm port)
+
+[selection]
+save_to_clipboard = false   # selection -> PRIMARY only; CLIPBOARD via Ctrl-Shift-C
+
+[mouse]
+hide_when_typing = true     # cursor hides while typing, reappears on movement
+
+# Send ESC then CR on Shift+Return (useful for some readline apps).
+[[keyboard.bindings]]
+key = "Return"
+mods = "Shift"
+chars = "\u001B\r"
