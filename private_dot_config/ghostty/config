@@ -1,0 +1,26 @@
+# ~/.config/ghostty/config — primary terminal emulator (replaces alacritty).
+#
+# Why ghostty: alacritty has no desktop-notification escape support. Ghostty
+# renders OSC 777 notifications (desktop-notifications defaults on), which is
+# how a remote Claude Code turn-end / permission-wait reaches us WITH its
+# message text -- see ~/.local/bin/claude-turn-notify and the tmux
+# `allow-passthrough on` that lets the escape ride home through the remote tmux.
+
+desktop-notifications = true
+
+# Theme: Catppuccin Mocha, matching the tmux status bar.
+theme = catppuccin-mocha
+
+# Mouse / selection -- classic xterm behavior, ported from alacritty:
+#   selection -> PRIMARY only (CLIPBOARD stays separate via Ctrl+Shift+C/V),
+#   middle-click pastes PRIMARY (ghostty default), Shift overrides app mouse.
+copy-on-select = true
+mouse-hide-while-typing = true
+mouse-scroll-multiplier = 3
+
+# Generous scrollback; real "old command" recall is shell history.
+scrollback-limit = 100000000
+
+# Shift+Enter -> ESC then CR (preserved from alacritty; some readline-aware
+# apps treat ESC+CR distinctly from CR alone).
+keybind = shift+enter=text:\x1b\r

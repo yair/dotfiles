@@ -51,9 +51,9 @@ import XMonad.Actions.GridSelect
 --------------------------------------------------------------------------------
 
 -- CHOICE 1: Terminal Emulator
--- Options: "alacritty", "kitty", "wezterm", "xterm"
+-- Options: "ghostty", "alacritty", "kitty", "wezterm", "xterm"
 myTerminal :: String
-myTerminal = "alacritty"
+myTerminal = "ghostty"
 --myTerminal = "xterm"
 --myTerminal = "/usr/local/bin/st"
 --myTerminal = "/usr/bin/wezterm"

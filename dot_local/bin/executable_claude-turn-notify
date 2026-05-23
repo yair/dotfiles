@@ -2,13 +2,15 @@
 # claude-turn-notify — Claude Code Stop + Notification hook.
 #
 # Distributed identically to every machine via chezmoi; decides per-environment:
-#   - Local / has a display:   desktop notification (rich).
-#   - Headless / remote (SSH): terminal bell that rides tmux+SSH back to the
-#     local terminal, where alacritty's [bell] command makes a notification.
+#   - Local / has a display:   desktop notification via notify-send (rich).
+#   - Headless / remote (SSH): emit an OSC 777 desktop-notification escape. It
+#     rides the pane tty -> tmux (allow-passthrough on) -> ssh -> the LOCAL
+#     ghostty, which turns it into a real OS desktop notification (NOT text on
+#     the remote screen). Carries the message text plus the host name.
 #
 # Wired to BOTH the Stop hook (turn ended) and the Notification hook (Claude
-# paused for permission / idle input), so a remote agent stuck on a
-# confirmation prompt still pings you instead of waiting forever.
+# paused for permission / idle input), so a remote agent stuck on a prompt
+# still pings you.
 
 proj=$(basename "${CLAUDE_PROJECT_DIR:-$PWD}")
 
@@ -34,18 +36,27 @@ if [ -n "$DISPLAY" ] && command -v notify-send >/dev/null 2>&1; then
     exit 0
 fi
 
-# Headless: ring the bell so it rides tmux+SSH home. Claude may run hooks with
-# stdout captured and no controlling tty, so write the bell where it will
-# actually reach the terminal:
-#   1) the controlling terminal, if we have one;
-#   2) the tmux pane's own tty (works even when our stdout is captured) -- this
-#      is what makes it equivalent to typing `printf '\a'` in the pane;
-#   3) stdout (last resort; may be swallowed by Claude).
-if printf '\a' > /dev/tty 2>/dev/null; then
-    :
-elif [ -n "$TMUX_PANE" ] && command -v tmux >/dev/null 2>&1; then
-    pane_tty=$(tmux display-message -p -t "$TMUX_PANE" '#{pane_tty}' 2>/dev/null)
-    { [ -n "$pane_tty" ] && printf '\a' > "$pane_tty" 2>/dev/null; } || printf '\a'
+# Headless: emit an OSC 777 desktop-notification escape toward the local
+# terminal. ghostty (desktop-notifications on) renders it as a real popup via
+# the OS notification daemon -- it is NOT printed to the remote screen.
+host=$(hostname -s 2>/dev/null || hostname 2>/dev/null || echo remote)
+title="Claude @ $host"
+# OSC 777 fields are ';'-separated; flatten ';' and newlines in the body.
+body=$(printf '%s' "$body" | tr ';\r\n' ',  ')
+
+# Pick a terminal to write to: the tmux pane's own tty works even when Claude
+# has captured our stdout; fall back to the controlling terminal, then stdout.
+target=/dev/stdout
+if [ -n "$TMUX_PANE" ] && command -v tmux >/dev/null 2>&1; then
+    pt=$(tmux display-message -p -t "$TMUX_PANE" '#{pane_tty}' 2>/dev/null)
+    [ -n "$pt" ] && target="$pt"
+elif [ -w /dev/tty ]; then
+    target=/dev/tty
+fi
+
+if [ -n "$TMUX" ]; then
+    # tmux passthrough: wrap the escape, doubling every ESC inside it.
+    printf '\033Ptmux;\033\033]777;notify;%s;%s\033\033\\\033\\' "$title" "$body" > "$target" 2>/dev/null
 else
-    printf '\a'
+    printf '\033]777;notify;%s;%s\033\\' "$title" "$body" > "$target" 2>/dev/null
 fi
