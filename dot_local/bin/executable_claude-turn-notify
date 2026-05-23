@@ -44,19 +44,25 @@ title="Claude @ $host"
 # OSC 777 fields are ';'-separated; flatten ';' and newlines in the body.
 body=$(printf '%s' "$body" | tr ';\r\n' ',  ')
 
-# Pick a terminal to write to: the tmux pane's own tty works even when Claude
-# has captured our stdout; fall back to the controlling terminal, then stdout.
-target=/dev/stdout
+emit() {
+    if [ -n "$TMUX" ]; then
+        # tmux passthrough: wrap the escape, doubling every ESC inside it.
+        printf '\033Ptmux;\033\033]777;notify;%s;%s\033\033\\\033\\' "$title" "$body"
+    else
+        printf '\033]777;notify;%s;%s\033\\' "$title" "$body"
+    fi
+}
+
+# Write to the first target that actually accepts it (the subshell-redirect
+# tests the open, so a failed /dev/tty falls through cleanly instead of
+# leaking an error): tmux pane tty -> controlling terminal -> stdout. The pane
+# tty works even when Claude has captured our stdout.
+pane_tty=""
 if [ -n "$TMUX_PANE" ] && command -v tmux >/dev/null 2>&1; then
-    pt=$(tmux display-message -p -t "$TMUX_PANE" '#{pane_tty}' 2>/dev/null)
-    [ -n "$pt" ] && target="$pt"
-elif [ -w /dev/tty ]; then
-    target=/dev/tty
+    pane_tty=$(tmux display-message -p -t "$TMUX_PANE" '#{pane_tty}' 2>/dev/null)
 fi
 
-if [ -n "$TMUX" ]; then
-    # tmux passthrough: wrap the escape, doubling every ESC inside it.
-    printf '\033Ptmux;\033\033]777;notify;%s;%s\033\033\\\033\\' "$title" "$body" > "$target" 2>/dev/null
-else
-    printf '\033]777;notify;%s;%s\033\\' "$title" "$body" > "$target" 2>/dev/null
+if   [ -n "$pane_tty" ] && ( emit > "$pane_tty" ) 2>/dev/null; then :
+elif ( emit > /dev/tty ) 2>/dev/null; then :
+else emit
 fi
