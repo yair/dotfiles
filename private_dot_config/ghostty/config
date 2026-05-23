@@ -1,39 +1,49 @@
 # ~/.config/ghostty/config — primary terminal emulator (replaces alacritty).
 #
+# IMPORTANT: ghostty does NOT support trailing/inline comments. Every comment
+# must be on its own line -- otherwise ghostty reads the comment as part of the
+# value and rejects the line (the "Configuration Errors" popup).
+#
 # Why ghostty: alacritty has no desktop-notification escape support. Ghostty
-# renders OSC 777 notifications -> a real OS desktop notification (via dunst),
-# which is how a remote Claude Code turn/permission reaches us WITH its message
-# text (see ~/.local/bin/claude-turn-notify + tmux `allow-passthrough on`).
+# renders OSC 777 -> a real OS desktop notification (dunst), carrying a remote
+# Claude Code turn/permission message home. See ~/.local/bin/claude-turn-notify
+# and tmux `allow-passthrough on`.
 
 desktop-notifications = true
 
-# --- Window chrome: stripped for the xmonad tiling WM ----------------------
-# xmonad manages window frames; we want no GTK titlebar, tabs, or buttons.
+# Window chrome stripped for the xmonad tiling WM (no titlebar / tabs / buttons).
 window-decoration = false
 gtk-titlebar = false
 window-show-tab-bar = never
-gtk-single-instance = false      # each launch is its own window/process (xmonad-friendly)
-confirm-close-surface = false    # no "really close?" popup
 
-# --- Clipboard / selection: classic xterm behavior -------------------------
-copy-on-select = true            # selection -> PRIMARY (CLIPBOARD via Ctrl+Shift+C/V)
-clipboard-read = allow           # don't gate paste behind a permission prompt
+# Each launch is its own window/process (xmonad-friendly).
+gtk-single-instance = false
+
+# No "really close?" confirmation popup.
+confirm-close-surface = false
+
+# Clipboard / selection -- classic X two-buffer model. With copy-on-select on,
+# all of this is ghostty default behavior:
+#   select text  -> copies to PRIMARY
+#   middle-click  -> pastes PRIMARY
+#   Shift+Insert  -> pastes PRIMARY (keyboard)
+#   Ctrl+Shift+C  -> copies selection to CLIPBOARD
+#   Ctrl+Shift+V  -> pastes CLIPBOARD
+# PRIMARY and CLIPBOARD stay separate (copy-on-select does not touch CLIPBOARD).
+copy-on-select = true
+clipboard-read = allow
 mouse-hide-while-typing = true
 
-# --- Scrollback -------------------------------------------------------------
-scrollback-limit = 100000000     # generous; real "old command" recall is shell history
+# Generous scrollback; real "old command" recall is shell history.
+scrollback-limit = 100000000
 
-# --- Shell integration ------------------------------------------------------
-# no-cursor : stop ghostty reshaping the cursor (it fought Claude Code's TUI).
-# ssh-env + ssh-terminfo : when you `ssh` to a host that lacks the
-#   xterm-ghostty terminfo, auto-install it (and fall back to a sane TERM) --
-#   fixes "missing or unsuitable terminal: xterm-ghostty" that broke remote tmux.
+# Shell integration:
+#   no-cursor             stop ghostty reshaping the cursor (it fought Claude Code's TUI)
+#   ssh-env, ssh-terminfo  auto-handle the xterm-ghostty terminfo over ssh
 shell-integration-features = no-cursor,title,path,ssh-env,ssh-terminfo
 
-# --- Keybindings ------------------------------------------------------------
 # Shift+Enter -> ESC then CR (ported from alacritty).
 keybind = shift+enter=text:\x1b\r
 
-# --- Colors -----------------------------------------------------------------
 # Default ghostty dark. Uncomment to match the tmux status bar:
 # theme = catppuccin-mocha
