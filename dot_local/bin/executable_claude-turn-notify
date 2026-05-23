@@ -1,20 +1,55 @@
 #!/bin/sh
-# claude-turn-notify — Claude Code "Stop" hook (turn-end notification).
+# claude-turn-notify — Claude Code Stop + Notification hook.
 #
 # Distributed identically to every machine via chezmoi; decides per-environment:
-#   - Local / has a display:   desktop notification (rich -- names the project).
-#   - Headless / remote (SSH): ring the terminal bell. The bell byte rides the
-#     existing tmux + SSH stream back to the local terminal, where alacritty's
-#     [bell] command turns it into a desktop notification. No tunnel, no port.
-#     A bell carries no payload, so that local notification is generic.
+#   - Local / has a display:   desktop notification (rich).
+#   - Headless / remote (SSH): terminal bell that rides tmux+SSH back to the
+#     local terminal, where alacritty's [bell] command makes a notification.
+#
+# Wired to BOTH the Stop hook (turn ended) and the Notification hook (Claude
+# paused for permission / idle input), so a remote agent stuck on a
+# confirmation prompt still pings you instead of waiting forever.
 
-msg="Turn complete in $(basename "${CLAUDE_PROJECT_DIR:-$PWD}") — waiting for input"
+proj=$(basename "${CLAUDE_PROJECT_DIR:-$PWD}")
 
-if [ -n "$DISPLAY" ] && command -v notify-send >/dev/null 2>&1; then
-    notify-send 'Claude Code' "$msg"
+# The Notification hook sends a "message" on stdin (e.g. "Claude needs your
+# permission to use Bash"); the Stop hook does not. Read it only when stdin is
+# a pipe, so a manual test run doesn't hang waiting on the keyboard.
+message=""
+if [ ! -t 0 ]; then
+    message=$(python3 -c 'import sys, json
+try: print(json.load(sys.stdin).get("message", ""))
+except Exception: pass' 2>/dev/null)
+fi
+
+if [ -n "$message" ]; then
+    body="$message ($proj)"
 else
-    # /dev/tty = the controlling terminal (the tmux pane), bypassing any
-    # stdout capture by Claude Code. tmux forwards it (visual-bell off,
-    # bell-action any) up through SSH to the local terminal's bell.
-    printf '\a' > /dev/tty 2>/dev/null || printf '\a'
+    body="Turn complete in $proj — waiting for input"
+fi
+
+# Breadcrumb: confirm the hook actually fired. On a remote box, tail this to
+# tell "hook never ran" apart from "bell didn't reach the terminal".
+printf '%s  %s\n' "$(date '+%F %T')" "$body" >> "$HOME/.cache/claude-notify.log" 2>/dev/null
+
+# Local: rich desktop notification, done.
+if [ -n "$DISPLAY" ] && command -v notify-send >/dev/null 2>&1; then
+    notify-send 'Claude Code' "$body"
+    exit 0
+fi
+
+# Headless: ring the bell so it rides tmux+SSH home. Claude may run hooks with
+# stdout captured and no controlling tty, so write the bell where it will
+# actually reach the terminal:
+#   1) the controlling terminal, if we have one;
+#   2) the tmux pane's own tty (works even when our stdout is captured) -- this
+#      is what makes it equivalent to typing `printf '\a'` in the pane;
+#   3) stdout (last resort; may be swallowed by Claude).
+if printf '\a' > /dev/tty 2>/dev/null; then
+    :
+elif [ -n "$TMUX_PANE" ] && command -v tmux >/dev/null 2>&1; then
+    pane_tty=$(tmux display-message -p -t "$TMUX_PANE" '#{pane_tty}' 2>/dev/null)
+    { [ -n "$pane_tty" ] && printf '\a' > "$pane_tty" 2>/dev/null; } || printf '\a'
+else
+    printf '\a'
 fi

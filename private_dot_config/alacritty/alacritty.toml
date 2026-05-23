@@ -37,7 +37,7 @@ hide_when_typing = true     # cursor hides while typing, reappears on movement
 # only remote ones collapse to this generic message. Stray completion bells
 # are silenced at the source by ~/.inputrc (set bell-style none).
 duration = 0   # no visual flash; the popup is the signal
-command = { program = "notify-send", args = ["Claude Code", "Remote turn complete — waiting for input"] }
+command = { program = "notify-send", args = ["Claude Code", "Remote agent needs attention (turn ended or awaiting permission)"] }
 
 # Send ESC then CR on Shift+Return (useful for some readline apps).
 [[keyboard.bindings]]
