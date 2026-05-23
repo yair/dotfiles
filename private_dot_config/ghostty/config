@@ -34,6 +34,12 @@ copy-on-select = true
 clipboard-read = allow
 mouse-hide-while-typing = true
 
+# Paste immediately -- no "this text looks unsafe" confirmation dialog. That
+# protection (on by default) is what blocked middle-click pasting a selected
+# line (newlines trip it). Off = behaves like every other app; you're trusted
+# to know what you paste.
+clipboard-paste-protection = false
+
 # Generous scrollback; real "old command" recall is shell history.
 scrollback-limit = 100000000
 
@@ -45,5 +51,9 @@ shell-integration-features = no-cursor,title,path,ssh-env,ssh-terminfo
 # Shift+Enter -> ESC then CR (ported from alacritty).
 keybind = shift+enter=text:\x1b\r
 
-# Default ghostty dark. Uncomment to match the tmux status bar:
+# Pure black background.
+background = 000000
+
+# (Uncomment to match the tmux status bar instead -- note a theme sets its own
+# background, overriding the line above:)
 # theme = catppuccin-mocha
