@@ -1,26 +1,39 @@
 # ~/.config/ghostty/config — primary terminal emulator (replaces alacritty).
 #
 # Why ghostty: alacritty has no desktop-notification escape support. Ghostty
-# renders OSC 777 notifications (desktop-notifications defaults on), which is
-# how a remote Claude Code turn-end / permission-wait reaches us WITH its
-# message text -- see ~/.local/bin/claude-turn-notify and the tmux
-# `allow-passthrough on` that lets the escape ride home through the remote tmux.
+# renders OSC 777 notifications -> a real OS desktop notification (via dunst),
+# which is how a remote Claude Code turn/permission reaches us WITH its message
+# text (see ~/.local/bin/claude-turn-notify + tmux `allow-passthrough on`).
 
 desktop-notifications = true
 
-# Theme: Catppuccin Mocha, matching the tmux status bar.
-theme = catppuccin-mocha
+# --- Window chrome: stripped for the xmonad tiling WM ----------------------
+# xmonad manages window frames; we want no GTK titlebar, tabs, or buttons.
+window-decoration = false
+gtk-titlebar = false
+window-show-tab-bar = never
+gtk-single-instance = false      # each launch is its own window/process (xmonad-friendly)
+confirm-close-surface = false    # no "really close?" popup
 
-# Mouse / selection -- classic xterm behavior, ported from alacritty:
-#   selection -> PRIMARY only (CLIPBOARD stays separate via Ctrl+Shift+C/V),
-#   middle-click pastes PRIMARY (ghostty default), Shift overrides app mouse.
-copy-on-select = true
+# --- Clipboard / selection: classic xterm behavior -------------------------
+copy-on-select = true            # selection -> PRIMARY (CLIPBOARD via Ctrl+Shift+C/V)
+clipboard-read = allow           # don't gate paste behind a permission prompt
 mouse-hide-while-typing = true
-mouse-scroll-multiplier = 3
 
-# Generous scrollback; real "old command" recall is shell history.
-scrollback-limit = 100000000
+# --- Scrollback -------------------------------------------------------------
+scrollback-limit = 100000000     # generous; real "old command" recall is shell history
 
-# Shift+Enter -> ESC then CR (preserved from alacritty; some readline-aware
-# apps treat ESC+CR distinctly from CR alone).
+# --- Shell integration ------------------------------------------------------
+# no-cursor : stop ghostty reshaping the cursor (it fought Claude Code's TUI).
+# ssh-env + ssh-terminfo : when you `ssh` to a host that lacks the
+#   xterm-ghostty terminfo, auto-install it (and fall back to a sane TERM) --
+#   fixes "missing or unsuitable terminal: xterm-ghostty" that broke remote tmux.
+shell-integration-features = no-cursor,title,path,ssh-env,ssh-terminfo
+
+# --- Keybindings ------------------------------------------------------------
+# Shift+Enter -> ESC then CR (ported from alacritty).
 keybind = shift+enter=text:\x1b\r
+
+# --- Colors -----------------------------------------------------------------
+# Default ghostty dark. Uncomment to match the tmux status bar:
+# theme = catppuccin-mocha
