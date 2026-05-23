@@ -28,10 +28,6 @@ else
     body="Turn complete in $proj — waiting for input"
 fi
 
-# Breadcrumb: confirm the hook actually fired. On a remote box, tail this to
-# tell "hook never ran" apart from "bell didn't reach the terminal".
-printf '%s  %s\n' "$(date '+%F %T')" "$body" >> "$HOME/.cache/claude-notify.log" 2>/dev/null
-
 # Local: rich desktop notification, done.
 if [ -n "$DISPLAY" ] && command -v notify-send >/dev/null 2>&1; then
     notify-send 'Claude Code' "$body"
