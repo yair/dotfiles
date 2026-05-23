@@ -52,7 +52,7 @@ shell-integration-features = no-cursor,title,path,ssh-env,ssh-terminfo
 keybind = shift+enter=text:\x1b\r
 
 # Pure black background.
-background = 000000
+background = 181825
 
 # (Uncomment to match the tmux status bar instead -- note a theme sets its own
 # background, overriding the line above:)
