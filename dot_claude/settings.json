@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "notify-send 'Claude Code' \"Turn complete in $(basename $CLAUDE_PROJECT_DIR) — waiting for input\""
+            "command": "$HOME/.local/bin/claude-turn-notify"
           }
         ]
       }

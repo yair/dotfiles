@@ -1,0 +1,11 @@
+# ~/.inputrc — readline configuration (affects bash, python REPL, etc.)
+
+# Keep the system defaults (a bare ~/.inputrc would otherwise replace them).
+$include /etc/inputrc
+
+# Silence the bell: no audible \a on ambiguous tab-completion and friends.
+# This keeps stray local bells from triggering alacritty's [bell] command,
+# which fires notify-send for remote Claude Code turn-ends (see
+# ~/.local/bin/claude-turn-notify). On remote machines it also stops stray
+# completion bells from riding the SSH stream home as false alarms.
+set bell-style none

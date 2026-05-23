@@ -29,6 +29,16 @@ save_to_clipboard = false   # selection -> PRIMARY only; CLIPBOARD via Ctrl-Shif
 [mouse]
 hide_when_typing = true     # cursor hides while typing, reappears on movement
 
+[bell]
+# Turn an incoming terminal bell into a desktop notification. This is how a
+# remote (headless) Claude Code turn-end reaches us: the bell from bakkies
+# rides tmux+SSH back here, and this fires notify-send. Local turn-ends use
+# notify-send directly (rich, names the project) via the Stop hook script;
+# only remote ones collapse to this generic message. Stray completion bells
+# are silenced at the source by ~/.inputrc (set bell-style none).
+duration = 0   # no visual flash; the popup is the signal
+command = { program = "notify-send", args = ["Claude Code", "Remote turn complete — waiting for input"] }
+
 # Send ESC then CR on Shift+Return (useful for some readline apps).
 [[keyboard.bindings]]
 key = "Return"

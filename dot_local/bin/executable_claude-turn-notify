@@ -1,0 +1,20 @@
+#!/bin/sh
+# claude-turn-notify — Claude Code "Stop" hook (turn-end notification).
+#
+# Distributed identically to every machine via chezmoi; decides per-environment:
+#   - Local / has a display:   desktop notification (rich -- names the project).
+#   - Headless / remote (SSH): ring the terminal bell. The bell byte rides the
+#     existing tmux + SSH stream back to the local terminal, where alacritty's
+#     [bell] command turns it into a desktop notification. No tunnel, no port.
+#     A bell carries no payload, so that local notification is generic.
+
+msg="Turn complete in $(basename "${CLAUDE_PROJECT_DIR:-$PWD}") — waiting for input"
+
+if [ -n "$DISPLAY" ] && command -v notify-send >/dev/null 2>&1; then
+    notify-send 'Claude Code' "$msg"
+else
+    # /dev/tty = the controlling terminal (the tmux pane), bypassing any
+    # stdout capture by Claude Code. tmux forwards it (visual-bell off,
+    # bell-action any) up through SSH to the local terminal's bell.
+    printf '\a' > /dev/tty 2>/dev/null || printf '\a'
+fi
