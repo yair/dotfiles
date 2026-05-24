@@ -65,7 +65,14 @@ myLauncher = "rofi -show drun -show-icons"
 
 -- Whether focus follows the mouse pointer
 myFocusFollowsMouse :: Bool
-myFocusFollowsMouse = True
+-- False: focus is keyboard-driven. Switching to a workspace restores the
+-- window last focused THERE (xmonad's built-in per-workspace StackSet memory)
+-- instead of focus-follows-mouse stealing it to whatever sits under the
+-- (unmoved) pointer -- the old "only work in the lower-left corner" trap.
+-- The mouse is for copy/paste only; text selection works regardless of which
+-- window holds keyboard focus. We navigate by keyboard, so the click-to-focus
+-- that remains when FFM is off is dormant in practice.
+myFocusFollowsMouse = False
 
 -- Whether clicking on a window to focus also passes the click to the window
 myClickJustFocuses :: Bool
