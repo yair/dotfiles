@@ -91,7 +91,7 @@ myModMask = mod4Mask
 -- Workspace names - customize as you prefer
 -- You can use icons if you have a font that supports them (e.g., Font Awesome)
 myWorkspaces :: [String]
-myWorkspaces = ["1:adm", "2:web", "3:HW", "4:HW2", "5:discord", "6", "7", "8::remmina", "9:bakkies"]
+myWorkspaces = ["1:adm", "2:web", "3:HW", "4:HW2", "5", "6:remmina", "7:brain", "8:oc", "9:bakkies"]
 
 -- Border colors
 -- I think the defaults are something like 0x707070 and 0xff2020 or something like that.
