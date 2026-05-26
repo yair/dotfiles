@@ -43,6 +43,15 @@ clipboard-paste-protection = false
 # Generous scrollback; real "old command" recall is shell history.
 scrollback-limit = 100000000
 
+# tmux compatibility: tmux uses legacy wcwidth for character widths; ghostty
+# defaults to modern Unicode grapheme widths. The mismatch makes wide glyphs
+# (emoji, box-drawing, CJK, ambiguous-width) drift and overprint -- the
+# doubled/offset text inside tmux that Ctrl-L can't clear. `legacy` aligns
+# ghostty with tmux. (Apps that opt into terminal mode 2027 still get correct
+# Unicode width.) Takes effect for NEW terminals only -- open a fresh ghostty,
+# a reload won't fix an already-open window.
+grapheme-width-method = legacy
+
 # Shell integration:
 #   no-cursor             stop ghostty reshaping the cursor (it fought Claude Code's TUI)
 #   ssh-env, ssh-terminfo  auto-handle the xterm-ghostty terminfo over ssh
