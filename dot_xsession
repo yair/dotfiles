@@ -18,4 +18,9 @@ export LC_IDENTIFICATION="en_US.UTF-8"
 # CRITICAL: This overrides all specific LC_* settings and must be set early
 export LC_ALL="en_US.UTF-8"
 
+# Screen blanking / monitor power-off after 30 minutes idle (1800s).
+# X-server screensaver (blank) timer + DPMS standby/suspend/off.
+xset s 1800 1800
+xset dpms 1800 1800 1800
+
 exec xmonad
