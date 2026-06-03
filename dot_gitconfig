@@ -5,5 +5,6 @@
 	tool = bc4
 [difftool "bcompare"]
 	path = /usr/bin/bcompare
-[core]
-	hooksPath = ~/.config/git/hooks
+[credential "https://gitlab.com"]
+	helper = 
+	helper = !/usr/bin/glab auth git-credential
