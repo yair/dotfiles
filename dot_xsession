@@ -23,4 +23,12 @@ export LC_ALL="en_US.UTF-8"
 xset s 1800 1800
 xset dpms 1800 1800 1800
 
+# Keyboard layouts: English (default) + Hebrew in the LyX niqqud layout.
+#   - Group 1 = us  -> default, plain English.
+#   - Group 2 = il(lyx) -> Hebrew consonants on the base layer, niqqud on Shift
+#     (e.g. Shift-j = hiriq, Shift-e = qamats). Shift never yields Latin.
+#   - grp:shifts_toggle: press BOTH Shift keys together to flip languages.
+# Layout state is global (a keyboard setting, not per-window).
+setxkbmap -layout us,il -variant ,lyx -option grp:shifts_toggle
+
 exec xmonad
