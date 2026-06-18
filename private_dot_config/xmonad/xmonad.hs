@@ -202,6 +202,9 @@ myStartupHook = do
     -- Notification daemon
     spawnOnce "dunst &"
 
+	-- SyncThingTray GUI icon
+    spawnOnce "syncthingtray --wait &"
+
     spawnOnce "polybar -c ~/.config/xmonad/polybar.ini &"
     
     -- System tray

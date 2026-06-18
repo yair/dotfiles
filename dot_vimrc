@@ -40,7 +40,10 @@ highlight Normal ctermbg=NONE guibg=NONE
 " If using other color groups, you might want to clear their backgrounds as well
 highlight NonText ctermbg=NONE guibg=NONE
 
-set paste " Really?! As default?! Actually, that's nice.
+" NOTE: do NOT 'set paste' globally -- it silently disables expandtab (and
+" autoindent), so Tab emits a literal tab instead of spaces. Vim 8+ handles
+" terminal pastes via bracketed paste automatically, so it's not needed.
+" set paste
 
 " The stooooopid lxplus termcap workaround
 "set t_kb=
