@@ -28,5 +28,7 @@
   "effortLevel": "high",
   "prefersReducedMotion": true,
   "skipDangerousModePermissionPrompt": true,
-  "enabledPlugins": {}
+  "enabledPlugins": {},
+  "theme": "dark",
+  "tui": "default"
 }
