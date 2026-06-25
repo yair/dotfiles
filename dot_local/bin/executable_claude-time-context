@@ -11,6 +11,17 @@
 # survives context truncation — the last-turn timestamp is kept in a small
 # per-session file, not only in the (truncatable) transcript.
 #
+# Optionally also reports sun up/down + sunrise/sunset for the SITE WHERE THE
+# SESSION RUNS (relevant to ambient-light-sensitive work, e.g. photometry).
+# Coordinates are host-based, from either:
+#   env  : CLAUDE_SITE_LAT / CLAUDE_SITE_LON / CLAUDE_SITE_NAME
+#          (export these in ~/.config/shell/host/<host>.sh — the idiomatic way)
+#   file : ~/.config/claude/site.conf  with  LAT=.. / LON=.. / NAME=..
+# Absent or non-numeric -> sun line omitted. The math is a lightweight awk
+# sunrise equation (no Python, no deps): geometric sunrise/sunset good to
+# ~15 min at mid-latitudes; degrades near the poles / solstice (polar day and
+# polar night are reported as such).
+#
 # Always exits 0; never blocks. Distributed by chezmoi.
 
 PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
@@ -32,9 +43,9 @@ stamp=$(date '+%a %Y-%m-%d %H:%M:%S %Z (%z)')
 humanize() {
     s=$1
     [ "$s" -lt 0 ] && s=0
-    if   [ "$s" -lt 60 ];    then printf '%ds' "$s"
-    elif [ "$s" -lt 3600 ];  then printf '%dm %ds' $((s/60)) $((s%60))
-    elif [ "$s" -lt 86400 ]; then printf '%dh %dm' $((s/3600)) $(((s%3600)/60))
+    if   [ "$s" -lt 60 ];      then printf '%ds' "$s"
+    elif [ "$s" -lt 3600 ];    then printf '%dm %ds' $((s/60)) $((s%60))
+    elif [ "$s" -lt 86400 ];   then printf '%dh %dm' $((s/3600)) $(((s%3600)/60))
     elif [ "$s" -lt 2592000 ]; then printf '%dd %dh' $((s/86400)) $(((s%86400)/3600))
     else printf '%dmo %dd' $((s/2592000)) $(((s%2592000)/86400))
     fi
@@ -58,4 +69,51 @@ if [ -n "$elapsed" ]; then
     printf '[temporal context] Current time: %s. Elapsed since previous turn: %s.\n' "$stamp" "$elapsed"
 else
     printf '[temporal context] Current time: %s. (First turn of this session.)\n' "$stamp"
+fi
+
+# --- Sun (optional; host-based site coordinates) ----------------------------
+lat="$CLAUDE_SITE_LAT"; lon="$CLAUDE_SITE_LON"; name="$CLAUDE_SITE_NAME"
+if [ -z "$lat" ] || [ -z "$lon" ]; then
+    cf="$HOME/.config/claude/site.conf"
+    if [ -r "$cf" ]; then
+        # value of KEY=..., trimming trailing space and surrounding "quotes"
+        _getconf() { sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*//p" "$cf" 2>/dev/null | head -1 | sed 's/[[:space:]]*$//; s/^"//; s/"$//'; }
+        [ -n "$lat" ]  || lat=$(_getconf LAT)
+        [ -n "$lon" ]  || lon=$(_getconf LON)
+        [ -n "$name" ] || name=$(_getconf NAME)
+    fi
+fi
+
+isnum='^-?[0-9]+(\.[0-9]+)?$'
+if [[ "$lat" =~ $isnum ]] && [[ "$lon" =~ $isnum ]] && command -v awk >/dev/null 2>&1; then
+    [ -n "$name" ] || name="site"
+    z=$(date +%z); sg=${z:0:1}; zh=${z:1:2}; zm=${z:3:2}
+    off=$(( 10#$zh*3600 + 10#$zm*60 )); [ "$sg" = "-" ] && off=$(( -off ))
+    sun=$(awk -v lat="$lat" -v lon="$lon" -v epoch="$now" -v tzoff="$off" '
+      function asin(x){ return atan2(x, sqrt(1-x*x)) }
+      function acos(x){ return atan2(sqrt(1-x*x), x) }
+      function hhmm(e,  d,h,m){ d=e%86400; if(d<0)d+=86400; h=int(d/3600); m=int((d%3600)/60); return sprintf("%02d:%02d",h,m) }
+      BEGIN{
+        rad=3.141592653589793/180;
+        JD=epoch/86400.0+2440587.5; n=int(JD-2451545.0+0.0008+0.5);
+        Js=n-lon/360.0; M=(357.5291+0.98560028*Js)%360; Mr=M*rad;
+        C=1.9148*sin(Mr)+0.0200*sin(2*Mr)+0.0003*sin(3*Mr);
+        lam=(M+C+180+102.9372)%360; lamr=lam*rad;
+        Jt=2451545.0+Js+0.0053*sin(Mr)-0.0069*sin(2*lamr);
+        sd=sin(lamr)*sin(23.44*rad); dec=asin(sd); la=lat*rad;
+        cw=(sin(-0.833*rad)-sin(la)*sd)/(cos(la)*cos(dec));
+        if(cw<=-1){print "polar-day"; exit} if(cw>=1){print "polar-night"; exit}
+        w0=acos(cw)/rad;
+        r=(Jt-w0/360.0-2440587.5)*86400+tzoff; s=(Jt+w0/360.0-2440587.5)*86400+tzoff;
+        nl=epoch+tzoff;
+        printf "%s %s %s", (nl>=r&&nl<=s?"UP":"DOWN"), hhmm(r), hhmm(s);
+      }' 2>/dev/null)
+    if   [ "$sun" = "polar-day" ];   then
+        printf '[temporal context] Sun at %s: UP continuously (polar day — no sunset now).\n' "$name"
+    elif [ "$sun" = "polar-night" ]; then
+        printf '[temporal context] Sun at %s: DOWN continuously (polar night — no sunrise now).\n' "$name"
+    elif [ -n "$sun" ]; then
+        read -r st sr ss <<<"$sun"
+        printf '[temporal context] Sun at %s: %s — sunrise %s, sunset %s local (geometric, ~15m accuracy).\n' "$name" "$st" "$sr" "$ss"
+    fi
 fi
