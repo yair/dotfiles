@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# Guarded chezmoi auto-update for decentralized multi-machine sync.
+#
+# Fast-forward pull from origin, then apply ONLY the files that changed
+# upstream AND have no local edits. Never clobbers un-pushed commits or
+# locally-modified managed files; surfaces anything it can't safely handle via
+# an optional notifier (see below). Designed to run unattended (systemd timer).
+#
+# chezmoi status columns: col1 = home-vs-last-written (local edit),
+#                         col2 = home-vs-target  (upstream change to apply).
+#   " M" upstream changed, home clean   -> safe to apply
+#   "M ", "MM", "A " etc. col1 set      -> local edit; do NOT clobber
+#
+# Notifications: if an executable `chezmoi-autoupdate-notify` is on PATH, it is
+# called with a one-line message for anything needing attention (diverged pull,
+# conflicts, un-pushed commits). Wire it to your existing mail/Telegram. Absent
+# -> messages just go to the log (journald when run under systemd).
+#
+# Always exits 0; safe to run on any box (no-ops where chezmoi is absent).
+
+set -u
+PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+
+host=$(hostname -s 2>/dev/null || echo "?")
+log()    { printf '%s chezmoi-autoupdate[%s]: %s\n' "$(date '+%F %T')" "$host" "$*"; }
+notify() { command -v chezmoi-autoupdate-notify >/dev/null 2>&1 && chezmoi-autoupdate-notify "$*" >/dev/null 2>&1; log "NOTIFY: $*"; }
+
+command -v chezmoi >/dev/null 2>&1 || { log "chezmoi not installed; nothing to do"; exit 0; }
+chezmoi source-path >/dev/null 2>&1 || { log "no chezmoi source repo; nothing to do"; exit 0; }
+
+# 1) Fast-forward pull. Fails (non-zero) if local has diverged from origin.
+if ! out=$(chezmoi git -- pull --ff-only 2>&1); then
+    notify "$host: chezmoi pull --ff-only failed (history diverged or auth?). Resolve by hand. [$out]"
+    exit 0
+fi
+
+# 2) Un-pushed local commits are fine to apply (source already has them), but
+#    remind to push so they reach the other boxes.
+ahead=$(chezmoi git -- rev-list --count '@{u}..HEAD' 2>/dev/null || echo 0)
+[ "${ahead:-0}" -gt 0 ] && notify "$host: $ahead un-pushed chezmoi commit(s) — push so other boxes get them."
+
+# 3) Partition the working state.
+status=$(chezmoi status 2>/dev/null)
+# upstream-changed, locally-clean -> apply these
+mapfile -t apply_list < <(printf '%s\n' "$status" | awk 'NF && substr($0,1,1)==" " && substr($0,2,1)!=" "{print substr($0,4)}')
+# changed upstream AND edited locally -> genuine conflict, leave for a human
+mapfile -t conflict_list < <(printf '%s\n' "$status" | awk 'NF && substr($0,1,1)!=" " && substr($0,2,1)!=" "{print substr($0,4)}')
+
+if [ "${#conflict_list[@]}" -gt 0 ]; then
+    notify "$host: ${#conflict_list[@]} file(s) changed upstream AND edited locally — not applied: ${conflict_list[*]}"
+fi
+
+if [ "${#apply_list[@]}" -eq 0 ]; then
+    log "up to date (nothing safe to apply)."
+    exit 0
+fi
+
+# 4) Apply only the safe files, by absolute target path.
+declare -a targets=()
+for rel in "${apply_list[@]}"; do
+    [ -n "$rel" ] && targets+=("$HOME/$rel")
+done
+if out=$(chezmoi apply -- "${targets[@]}" 2>&1); then
+    log "applied ${#targets[@]} file(s): ${apply_list[*]}"
+else
+    notify "$host: chezmoi apply failed for ${apply_list[*]} [$out]"
+fi
+exit 0
