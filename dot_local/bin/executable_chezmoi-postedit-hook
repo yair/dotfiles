@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Claude Code PostToolUse hook (matcher: Edit|Write).
+#
+# If the file an agent just edited is managed by chezmoi, keep the source in
+# sync (re-add) and — the important bit — tell the agent so, via a system note
+# (hookSpecificOutput.additionalContext), that the file belongs to the dotfiles
+# repo and should be committed there. The agent then handles it like any other
+# git repo. We deliberately do NOT auto-commit (avoids churn) and NEVER block.
+#
+# Behaviour:
+#   - unmanaged file  -> silent, no output (ordinary repos are unaffected)
+#   - managed file    -> chezmoi re-add + a note telling the agent to commit
+#   - templated/enc.  -> NO re-add; warn that the home edit will be lost on apply
+#
+# Always exits 0. Registered in dot_claude/settings.json. Distributed by chezmoi.
+
+PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+
+command -v chezmoi >/dev/null 2>&1 || exit 0   # no chezmoi here -> nothing to do
+command -v jq      >/dev/null 2>&1 || exit 0
+
+input=$(cat)
+file=$(printf '%s' "$input" | jq -r '.tool_input.file_path // empty' 2>/dev/null)
+[ -n "$file" ] || exit 0
+
+# source-path exits non-zero for paths chezmoi does not manage -> stay silent.
+src=$(chezmoi source-path -- "$file" 2>/dev/null) || exit 0
+
+# Emit a system note the agent will see, then stop. jq --arg handles escaping.
+emit() {
+    jq -cn --arg ctx "$1" \
+        '{hookSpecificOutput:{hookEventName:"PostToolUse",additionalContext:$ctx}}'
+    exit 0
+}
+
+case "$src" in
+    *.tmpl|*encrypted_*)
+        emit "chezmoi: '$file' is a TEMPLATED/ENCRYPTED chezmoi file (source: $src). Editing the home copy is a mistake — it will be OVERWRITTEN on the next 'chezmoi apply'. Edit the source instead, then run 'chezmoi apply'. Do not commit the home file."
+        ;;
+esac
+
+if chezmoi re-add -- "$file" >/dev/null 2>&1; then
+    emit "chezmoi: '$file' is managed by chezmoi and has just been re-added to the source ($src). It now belongs to the dotfiles repo at ~/.local/share/chezmoi. When you finish this change, commit it there as normal git hygiene: 'chezmoi git -- add -A && chezmoi git -- commit -m \"<message>\"' (the user pushes). Do not commit on every single edit; commit the logical change once."
+else
+    emit "chezmoi: '$file' is managed by chezmoi (source: $src) but 'chezmoi re-add' failed. Re-add and commit it manually in the dotfiles repo at ~/.local/share/chezmoi."
+fi
