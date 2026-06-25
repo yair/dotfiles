@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Claude Code UserPromptSubmit hook: give the agent temporal awareness.
+#
+# Fires when the user submits a prompt, BEFORE the agent reasons. For
+# UserPromptSubmit, stdout (exit 0) is injected into the model's context — so
+# this prints the current local time plus how long it has been since the user's
+# previous turn. That closes the "was it 2 minutes or 2 months?" blind spot:
+# between turns the agent has no clock, and guesses wrong.
+#
+# Elapsed time is computed here (not left to the agent) so it is exact and
+# survives context truncation — the last-turn timestamp is kept in a small
+# per-session file, not only in the (truncatable) transcript.
+#
+# Always exits 0; never blocks. Distributed by chezmoi.
+
+PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+
+input=$(cat 2>/dev/null)
+
+# Per-session key for elapsed tracking (degrade gracefully without jq).
+sid="nosession"
+if command -v jq >/dev/null 2>&1; then
+    sid=$(printf '%s' "$input" | jq -r '.session_id // "nosession"' 2>/dev/null)
+fi
+[ -n "$sid" ] || sid="nosession"
+sid=${sid//[^A-Za-z0-9_-]/_}
+
+now=$(date +%s)
+stamp=$(date '+%a %Y-%m-%d %H:%M:%S %Z (%z)')
+
+# Humanize a duration in seconds: compact, unambiguous, up to months/days.
+humanize() {
+    s=$1
+    [ "$s" -lt 0 ] && s=0
+    if   [ "$s" -lt 60 ];    then printf '%ds' "$s"
+    elif [ "$s" -lt 3600 ];  then printf '%dm %ds' $((s/60)) $((s%60))
+    elif [ "$s" -lt 86400 ]; then printf '%dh %dm' $((s/3600)) $(((s%3600)/60))
+    elif [ "$s" -lt 2592000 ]; then printf '%dd %dh' $((s/86400)) $(((s%86400)/3600))
+    else printf '%dmo %dd' $((s/2592000)) $(((s%2592000)/86400))
+    fi
+}
+
+dir="${TMPDIR:-/tmp}/claude-turnclock"
+mkdir -p "$dir" 2>/dev/null
+f="$dir/$sid"
+
+elapsed=""
+if [ -r "$f" ]; then
+    prev=$(cat "$f" 2>/dev/null)
+    case "$prev" in
+        ''|*[!0-9]*) ;;                       # missing / not a number -> skip
+        *) elapsed=$(humanize $((now - prev))) ;;
+    esac
+fi
+printf '%s' "$now" > "$f" 2>/dev/null
+
+if [ -n "$elapsed" ]; then
+    printf '[temporal context] Current time: %s. Elapsed since previous turn: %s.\n' "$stamp" "$elapsed"
+else
+    printf '[temporal context] Current time: %s. (First turn of this session.)\n' "$stamp"
+fi
