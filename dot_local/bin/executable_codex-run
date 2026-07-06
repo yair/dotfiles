@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# codex-run — safe, quiet wrapper for headless Codex (GPT-5.5) runs.
+#
+# WHAT: runs `codex exec` non-interactively and prints ONLY the agent's final
+# message to stdout, so a caller — a human, or an AI agent of any lineage — can
+# capture a clean result with `out=$(codex-run "...")`. The live transcript
+# (codex's reasoning/tool noise) is streamed to stderr; nothing is left on
+# stdout for you to untangle.
+#
+# WHY THIS EXISTS — two footguns bite people who call `codex exec` directly:
+#   1. stdin hang: with a prompt arg AND a stdin that never reaches EOF (an
+#      open pipe or a TTY), codex blocks waiting to append a <stdin> block.
+#      This wrapper always feeds codex </dev/null, so it cannot hang.
+#   2. output noise: codex streams its whole transcript to stdout; captured
+#      naively that pollutes the caller's context. `-o` captures just the final
+#      message — that, and only that, is what we print.
+#
+# WHEN TO USE CODEX AT ALL (the division of labor, so you needn't guess):
+#   GPT-5.5 via codex is an excellent, disciplined WORKER: coding, testing,
+#   mechanical transforms, doing exactly what it is told — on a quota that is
+#   generally more generous than, and separate from, Claude's. It is weaker on
+#   taste, design, and judgment. So delegate well-specified EXECUTION to it and
+#   keep architecture/opinion with the orchestrating agent. If you (the caller)
+#   are yourself an LLM, note that codex's transcript can be long: prefer
+#   running this from a cheap sub-agent (e.g. Sonnet) that returns just the
+#   conclusion, rather than pulling the whole transcript into your own context.
+#   For the engine's review step use `engine mr review-run --harness codex`
+#   (it already does -o extraction); THIS helper is for ad-hoc worker runs
+#   OUTSIDE the engine flow. Full flow + rationale live in the brain — search
+#   "codex GPT-5.5 worker" (project bakkies-admin).
+#
+# USAGE:
+#   codex-run [options] "PROMPT"
+#   codex-run [options] -f PROMPT_FILE
+#   printf '%s' "PROMPT" | codex-run [options]          # prompt via stdin
+#
+# OPTIONS:
+#   -C, --cd DIR         working root for the run (default: current directory)
+#   -s, --sandbox MODE   read-only (default) | workspace-write | danger-full-access
+#       --write          shorthand for: -s workspace-write
+#   -m, --model MODEL    override the model (default: codex config, i.e. gpt-5.5)
+#       --transcript F   also save the full live transcript to file F
+#       --               pass any remaining args straight to `codex exec`
+#   -h, --help           show this header and exit
+#
+# EXIT: propagates codex's exit code. On success, the final message is on
+# stdout; on failure, stdout may be empty and the reason is on stderr.
+
+set -uo pipefail
+
+self=${0##*/}
+usage() { sed -n '2,/^set -uo pipefail/{/^set -uo pipefail/!p}' "$0" | sed 's/^# \{0,1\}//'; }
+
+cd_dir=""
+sandbox="read-only"
+model=""
+prompt_file=""
+transcript=""
+passthrough=()
+prompt=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help)       usage; exit 0 ;;
+    -C|--cd)         cd_dir="$2"; shift 2 ;;
+    -s|--sandbox)    sandbox="$2"; shift 2 ;;
+    --write)         sandbox="workspace-write"; shift ;;
+    -m|--model)      model="$2"; shift 2 ;;
+    -f|--prompt-file) prompt_file="$2"; shift 2 ;;
+    --transcript)    transcript="$2"; shift 2 ;;
+    --)              shift; passthrough=("$@"); break ;;
+    -*)              echo "$self: unknown option: $1 (see --help)" >&2; exit 2 ;;
+    *)               prompt="$1"; shift ;;
+  esac
+done
+
+# Resolve the prompt: explicit -f wins, then a positional arg, then stdin.
+if [[ -n "$prompt_file" ]]; then
+  [[ -r "$prompt_file" ]] || { echo "$self: cannot read prompt file: $prompt_file" >&2; exit 2; }
+  prompt="$(cat -- "$prompt_file")"
+elif [[ -z "$prompt" && ! -t 0 ]]; then
+  prompt="$(cat)"          # caller piped the prompt in; consume it fully now
+fi
+[[ -n "$prompt" ]] || { echo "$self: no prompt given (arg, -f FILE, or stdin). See --help." >&2; exit 2; }
+
+command -v codex >/dev/null 2>&1 || { echo "$self: codex not found on PATH" >&2; exit 127; }
+
+last_msg="$(mktemp -t codex-run.XXXXXX)"
+trap 'rm -f "$last_msg"' EXIT
+
+# Safe, quiet defaults: no color, never blocked on git-repo detection, final
+# message captured to a file. Callers can still override anything after `--`.
+args=(--color never --skip-git-repo-check -s "$sandbox" -o "$last_msg")
+[[ -n "$cd_dir" ]] && args+=(-C "$cd_dir")
+[[ -n "$model"  ]] && args+=(-m "$model")
+args+=("${passthrough[@]}")
+
+# codex's stdin is pinned to /dev/null (footgun #1). Its transcript goes to our
+# stderr; the final message goes to our stdout.
+if [[ -n "$transcript" ]]; then
+  codex exec "${args[@]}" "$prompt" </dev/null 2>&1 | tee -- "$transcript" >&2
+  rc=${PIPESTATUS[0]}
+else
+  codex exec "${args[@]}" "$prompt" </dev/null >&2
+  rc=$?
+fi
+
+cat -- "$last_msg"
+exit "$rc"
