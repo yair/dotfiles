@@ -389,6 +389,11 @@ myKeys =
 --    , ("M-s m",        namedScratchpadAction myScratchpads "mixer")
     
     -- SCREENSHOTS
+    -- NOTE (2026-07-12): flameshot must stay at 13.x (apt-mark hold flameshot).
+    -- v14 dropped direct X11 grabbing and requires an xdg-desktop-portal Screenshot
+    -- backend, which only GNOME Shell/KWin provide — under xmonad it just times out
+    -- after 30s with "Unable to capture screen". On a fresh install: downgrade to
+    -- 13.3.0 and hold. See ~/w/zhizi/docs/flameshot-v14-portal-breakage.md + brain.
     , ("M-S-s",        spawn "flameshot gui")               -- Screenshot tool				-- Like in Windows! 🥰
 --    , ("<Print>",      spawn "flameshot gui")               -- Screenshot tool				-- minimax
 --    , ("M-<Print>",    spawn "flameshot full -c")           -- Full screenshot to clipboard
