@@ -1,0 +1,66 @@
+# Pomodoro timer — driven by polybar's [module/uair] (~/.config/xmonad/polybar.ini),
+# which runs `uair` as a tailed script and clicks map to uairctl.
+# Cycle: 4 × (25m work + 5m break) with a 15m long break, looping forever.
+# Each cycle parks paused on "Work 1/4" (autostart=false) until clicked.
+loop_on_end = true
+
+[defaults]
+autostart = true
+time_format = "%M:%S"
+paused_state_text = "⏸"
+resumed_state_text = ""
+# %{F...} are polybar color tags; {name}/{time}/{state} are uair tokens.
+format = "%{F#F0C674}🍅 {name}%{F-} {time} {state}\n"
+
+[[sessions]]
+id = "w1"
+name = "Work 1/4"
+duration = "25m"
+autostart = false
+command = "notify-send -u normal '☕ Break time' '5 minutes off'"
+
+[[sessions]]
+id = "b1"
+name = "Break"
+duration = "5m"
+format = "%{F#8ABEB7}☕ {name}%{F-} {time} {state}\n"
+command = "notify-send -u critical '🍅 Back to work' 'Work session 2/4'"
+
+[[sessions]]
+id = "w2"
+name = "Work 2/4"
+duration = "25m"
+command = "notify-send -u normal '☕ Break time' '5 minutes off'"
+
+[[sessions]]
+id = "b2"
+name = "Break"
+duration = "5m"
+format = "%{F#8ABEB7}☕ {name}%{F-} {time} {state}\n"
+command = "notify-send -u critical '🍅 Back to work' 'Work session 3/4'"
+
+[[sessions]]
+id = "w3"
+name = "Work 3/4"
+duration = "25m"
+command = "notify-send -u normal '☕ Break time' '5 minutes off'"
+
+[[sessions]]
+id = "b3"
+name = "Break"
+duration = "5m"
+format = "%{F#8ABEB7}☕ {name}%{F-} {time} {state}\n"
+command = "notify-send -u critical '🍅 Back to work' 'Work session 4/4'"
+
+[[sessions]]
+id = "w4"
+name = "Work 4/4"
+duration = "25m"
+command = "notify-send -u normal '☕ Long break' '15 minutes off — cycle done after this'"
+
+[[sessions]]
+id = "lb"
+name = "Long break"
+duration = "15m"
+format = "%{F#8ABEB7}☕ {name}%{F-} {time} {state}\n"
+command = "notify-send -u normal '🍅 Cycle complete' 'Timer parked — click it to start a new cycle'"
