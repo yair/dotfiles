@@ -1,0 +1,16 @@
+{
+  "description": "Global temporal context for interactive Codex sessions.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.local/bin/claude-time-context",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
