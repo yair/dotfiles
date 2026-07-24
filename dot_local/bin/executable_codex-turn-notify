@@ -1,0 +1,64 @@
+#!/bin/sh
+# codex-turn-notify — high-signal Codex agent-turn-complete notification.
+#
+# Codex passes one structured JSON argument through the global `notify` config.
+# Resolve the repository slug from cwd when possible and include the machine
+# hostname, avoiding generic terminal-emulator titles such as "ghostty".
+
+payload=${1:-}
+[ -n "$payload" ] || exit 0
+
+fields=$(printf '%s' "$payload" | python3 -c 'import json, sys
+try:
+    value = json.load(sys.stdin)
+    print(value.get("type", ""))
+    print(value.get("cwd", ""))
+except Exception:
+    pass' 2>/dev/null)
+
+event=$(printf '%s\n' "$fields" | sed -n '1p')
+cwd=$(printf '%s\n' "$fields" | sed -n '2p')
+[ "$event" = "agent-turn-complete" ] || exit 0
+[ -n "$cwd" ] || cwd=$PWD
+
+root=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null)
+if [ -n "$root" ]; then
+    project=$(basename "$root")
+else
+    project=$(basename "$cwd")
+fi
+[ -n "$project" ] || project="unknown-project"
+
+host=$(hostname -s 2>/dev/null || hostname 2>/dev/null || echo unknown-host)
+title="Codex @ $host"
+body="Turn complete in $project — waiting for input"
+
+# Local display: send a native desktop notification directly.
+if [ -n "$DISPLAY" ] && command -v notify-send >/dev/null 2>&1; then
+    notify-send "$title" "$body"
+    exit 0
+fi
+
+# Remote/headless session: emit OSC 777 toward the operator's local terminal.
+# The terminal converts the escape into a desktop notification, but its own
+# application name is no longer the useful title.
+title=$(printf '%s' "$title" | tr ';\r\n' ',  ')
+body=$(printf '%s' "$body" | tr ';\r\n' ',  ')
+
+emit() {
+    if [ -n "$TMUX" ]; then
+        printf '\033Ptmux;\033\033]777;notify;%s;%s\033\033\\\033\\' "$title" "$body"
+    else
+        printf '\033]777;notify;%s;%s\033\\' "$title" "$body"
+    fi
+}
+
+pane_tty=""
+if [ -n "$TMUX_PANE" ] && command -v tmux >/dev/null 2>&1; then
+    pane_tty=$(tmux display-message -p -t "$TMUX_PANE" '#{pane_tty}' 2>/dev/null)
+fi
+
+if   [ -n "$pane_tty" ] && ( emit > "$pane_tty" ) 2>/dev/null; then :
+elif ( emit > /dev/tty ) 2>/dev/null; then :
+else emit
+fi

@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Claude Code UserPromptSubmit hook: give the agent temporal awareness.
+# Claude Code / Codex UserPromptSubmit hook: give the agent temporal awareness.
 #
 # Fires when the user submits a prompt, BEFORE the agent reasons. For
-# UserPromptSubmit, stdout (exit 0) is injected into the model's context — so
-# this prints the current local time plus how long it has been since the user's
-# previous turn. That closes the "was it 2 minutes or 2 months?" blind spot:
+# UserPromptSubmit, stdout (exit 0) is injected into the model's context. Claude
+# accepts plain text; Codex receives its documented hookSpecificOutput JSON
+# shape. Both carry the current local time plus how long it has been since the
+# user's previous turn. That closes the "was it 2 minutes or 2 months?" blind spot:
 # between turns the agent has no clock, and guesses wrong.
 #
 # Elapsed time is computed here (not left to the agent) so it is exact and
@@ -27,6 +28,28 @@
 PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
 input=$(cat 2>/dev/null)
+
+# Codex adds turn_id to UserPromptSubmit input. Keep Claude's long-established
+# plain-text output, but use explicit JSON for Codex: text beginning with
+# "[temporal context]" is otherwise mistaken for malformed JSON by Codex 0.145.
+codex_hook=false
+if command -v jq >/dev/null 2>&1; then
+    if printf '%s' "$input" |
+        jq -e '(.hook_event_name == "UserPromptSubmit") and
+               ((.turn_id? | type) == "string")' >/dev/null 2>&1; then
+        codex_hook=true
+    fi
+elif command -v python3 >/dev/null 2>&1; then
+    if [ "$(printf '%s' "$input" | python3 -c 'import json, sys
+try:
+    value = json.load(sys.stdin)
+    print("yes" if value.get("hook_event_name") == "UserPromptSubmit"
+          and isinstance(value.get("turn_id"), str) else "no")
+except Exception:
+    print("no")' 2>/dev/null)" = "yes" ]; then
+        codex_hook=true
+    fi
+fi
 
 # Per-session key for elapsed tracking (degrade gracefully without jq).
 sid="nosession"
@@ -65,11 +88,22 @@ if [ -r "$f" ]; then
 fi
 printf '%s' "$now" > "$f" 2>/dev/null
 
+context=""
+append_context() {
+    if [ -n "$context" ]; then
+        context="${context}
+$1"
+    else
+        context=$1
+    fi
+}
+
 if [ -n "$elapsed" ]; then
-    printf '[temporal context] Current time: %s. Elapsed since previous turn: %s.\n' "$stamp" "$elapsed"
+    printf -v line '[temporal context] Current time: %s. Elapsed since previous turn: %s.' "$stamp" "$elapsed"
 else
-    printf '[temporal context] Current time: %s. (First turn of this session.)\n' "$stamp"
+    printf -v line '[temporal context] Current time: %s. (First turn of this session.)' "$stamp"
 fi
+append_context "$line"
 
 # --- Sun (optional; host-based site coordinates) ----------------------------
 lat="$CLAUDE_SITE_LAT"; lon="$CLAUDE_SITE_LON"; name="$CLAUDE_SITE_NAME"
@@ -109,11 +143,34 @@ if [[ "$lat" =~ $isnum ]] && [[ "$lon" =~ $isnum ]] && command -v awk >/dev/null
         printf "%s %s %s", (nl>=r&&nl<=s?"UP":"DOWN"), hhmm(r), hhmm(s);
       }' 2>/dev/null)
     if   [ "$sun" = "polar-day" ];   then
-        printf '[temporal context] Sun at %s: UP continuously (polar day — no sunset now).\n' "$name"
+        printf -v line '[temporal context] Sun at %s: UP continuously (polar day — no sunset now).' "$name"
+        append_context "$line"
     elif [ "$sun" = "polar-night" ]; then
-        printf '[temporal context] Sun at %s: DOWN continuously (polar night — no sunrise now).\n' "$name"
+        printf -v line '[temporal context] Sun at %s: DOWN continuously (polar night — no sunrise now).' "$name"
+        append_context "$line"
     elif [ -n "$sun" ]; then
         read -r st sr ss <<<"$sun"
-        printf '[temporal context] Sun at %s: %s — sunrise %s, sunset %s local (geometric, ~15m accuracy).\n' "$name" "$st" "$sr" "$ss"
+        printf -v line '[temporal context] Sun at %s: %s — sunrise %s, sunset %s local (geometric, ~15m accuracy).' "$name" "$st" "$sr" "$ss"
+        append_context "$line"
     fi
+fi
+
+if $codex_hook; then
+    if command -v jq >/dev/null 2>&1; then
+        jq -cn --arg context "$context" \
+            '{hookSpecificOutput:{hookEventName:"UserPromptSubmit",
+                                  additionalContext:$context}}'
+    elif command -v python3 >/dev/null 2>&1; then
+        printf '%s' "$context" | python3 -c 'import json, sys
+print(json.dumps({"hookSpecificOutput": {
+    "hookEventName": "UserPromptSubmit",
+    "additionalContext": sys.stdin.read(),
+}}, separators=(",", ":")))'
+    else
+        # Last-ditch plain text must not start with "[" or Codex treats it as
+        # an attempted JSON value.
+        printf 'Temporal context: %s\n' "$context"
+    fi
+else
+    printf '%s\n' "$context"
 fi
