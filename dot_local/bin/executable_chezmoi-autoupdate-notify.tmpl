@@ -37,6 +37,9 @@ OC_ALERT_LIB="/home/oc/.openclaw/workspace/scripts/alert-lib.sh"
 PUSH_THROTTLE_HOURS="${PUSH_THROTTLE_HOURS:-24}"
 STAMP_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/chezmoi-autoupdate"
 HOST="$(hostname -s 2>/dev/null || hostname)"
+# Several homedirs on this host run their own copy — say which one is asking.
+WHO="$(id -un)@${HOST}"
+SRC="$(chezmoi source-path 2>/dev/null || echo "$HOME/.local/share/chezmoi")"
 
 key="$(printf '%s' "$msg" | cksum | cut -d' ' -f1)"
 stamp="$STAMP_DIR/last-push.$key"
@@ -46,9 +49,9 @@ last="$(cat "$stamp" 2>/dev/null || echo 0)"
 if [ "$(( now - last ))" -ge "$(( PUSH_THROTTLE_HOURS * 3600 ))" ]; then
     curl --silent --show-error --max-time 25 \
         --mail-from "$MAIL_FROM" --mail-rcpt "$MAIL_TO" --url "$SMTP_URL" -T - <<EOF >/dev/null 2>&1 || true
-From: ${HOST} chezmoi-autoupdate <${MAIL_FROM}>
+From: ${WHO} chezmoi-autoupdate <${MAIL_FROM}>
 To: ${MAIL_TO}
-Subject: [${HOST}] chezmoi-autoupdate needs a human
+Subject: [${WHO}] chezmoi-autoupdate needs a human
 Date: $(date -R)
 Message-ID: <${key}.${now}@${HOST}.albanialink.com>
 MIME-Version: 1.0
@@ -56,18 +59,26 @@ Content-Type: text/plain; charset=UTF-8
 
 ${msg}
 
+Account: ${WHO}   source: ${SRC}
+
 --
 Checked every 30 min by chezmoi-autoupdate.timer; this nag is throttled to one
 per ${PUSH_THROTTLE_HOURS}h per distinct message. Full log:
-  journalctl --user -u chezmoi-autoupdate
+  journalctl --user -u chezmoi-autoupdate   (as ${WHO})
 EOF
     # Telegram reuses OpenClaw's alert-lib (direct Bot API, 0 tokens) as the
     # `oc` user, the same way the root nag scripts do. -n so a box without
     # passwordless sudo fails instantly instead of hanging on a password
     # prompt that no timer-run process can ever answer.
     if [ -f "$OC_ALERT_LIB" ]; then
+{{- if eq .chezmoi.username "oc" }}
+        # Rendered for the oc account itself: it owns alert-lib and has no sudo,
+        # so source it directly (a subshell keeps its globals out of ours).
+        ( . "$OC_ALERT_LIB" && alert_main "$WHO chezmoi-autoupdate" "$msg" ) >/dev/null 2>&1 || true
+{{- else }}
         sudo -n -u oc bash -c '. "$1" && alert_main "$2" "$3"' _ \
-            "$OC_ALERT_LIB" "$HOST chezmoi-autoupdate" "$msg" >/dev/null 2>&1 || true
+            "$OC_ALERT_LIB" "$WHO chezmoi-autoupdate" "$msg" >/dev/null 2>&1 || true
+{{- end }}
     fi
     printf '%s\n' "$now" > "$stamp" 2>/dev/null || true
     # Keep the stamp dir from growing a file per distinct message forever.
