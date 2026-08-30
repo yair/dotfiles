@@ -2,10 +2,14 @@
 # Arms the chezmoi-autoupdate user timer whenever this script's content
 # changes (chezmoi run_onchange_). Idempotent; silent no-op where there is
 # no user systemd. Bump the version line to force a re-arm on every box.
-# version: 2
+# version: 3
 set -u
 command -v systemctl >/dev/null 2>&1 || exit 0
-systemctl --user is-system-running >/dev/null 2>&1 || { echo "chezmoi: no user systemd session — arm chezmoi-autoupdate.timer by hand later"; exit 0; }
+# is-system-running exits non-zero for "degraded" (any failed user unit), which is a perfectly usable manager
+case "$(systemctl --user is-system-running 2>/dev/null)" in
+  running|degraded|starting) ;;
+  *) echo "chezmoi: no user systemd session — arm chezmoi-autoupdate.timer by hand later"; exit 0 ;;
+esac
 systemctl --user daemon-reload
 systemctl --user enable --now chezmoi-autoupdate.timer >/dev/null 2>&1 \
   && echo "chezmoi: chezmoi-autoupdate.timer armed (every 30 min)" \

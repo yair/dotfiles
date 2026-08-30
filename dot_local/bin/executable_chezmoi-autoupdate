@@ -55,14 +55,29 @@ if [ "${#apply_list[@]}" -eq 0 ]; then
     exit 0
 fi
 
-# 4) Apply only the safe files, by absolute target path.
-declare -a targets=()
+# 4) Apply only the safe entries, one at a time. Directories are applied
+#    non-recursively: a directory whose own attributes changed (e.g. mode)
+#    must not drag a conflicting child into the apply, where chezmoi would
+#    try to prompt, find no TTY, and abort the whole batch. Scripts
+#    (run_onchange_ etc.) show up by bare name and are applied by that name.
+declare -a applied=() failed=()
+run_scripts=0
 for rel in "${apply_list[@]}"; do
-    [ -n "$rel" ] && targets+=("$HOME/$rel")
+    [ -n "$rel" ] || continue
+    if [ "$(printf '%s\n' "$status" | awk -v r="$rel" 'substr($0,4)==r{print substr($0,2,1)}')" = "R" ]; then
+        run_scripts=1; continue           # a script: cannot be targeted by name, see below
+    elif [ -d "$HOME/$rel" ]; then
+        out=$(chezmoi apply --recursive=false -- "$HOME/$rel" 2>&1)
+    else
+        out=$(chezmoi apply -- "$HOME/$rel" 2>&1)
+    fi
+    if [ $? -eq 0 ]; then applied+=("$rel"); else failed+=("$rel [$out]"); fi
 done
-if out=$(chezmoi apply -- "${targets[@]}" 2>&1); then
-    log "applied ${#targets[@]} file(s): ${apply_list[*]}"
-else
-    notify "$host: chezmoi apply failed for ${apply_list[*]} [$out]"
+# Pending scripts (status col2 = R) run as a class; run_onchange_ ones only fire
+# when their content changed, so this is a no-op when nothing is pending.
+if [ "$run_scripts" -eq 1 ]; then
+    if out=$(chezmoi apply --include=scripts 2>&1); then applied+=("(scripts)"); else failed+=("(scripts) [$out]"); fi
 fi
+[ "${#applied[@]}" -gt 0 ] && log "applied ${#applied[@]} entr(y|ies): ${applied[*]}"
+[ "${#failed[@]}" -gt 0 ] && notify "$host: chezmoi apply failed for: ${failed[*]}"
 exit 0
