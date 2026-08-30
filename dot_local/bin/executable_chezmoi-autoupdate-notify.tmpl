@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# chezmoi-autoupdate-notify — how chezmoi-autoupdate reaches a human.
+# Called with one message argument. Picks the best channel this box has:
+#   per-host block   a channel wired below for this machine specifically
+#   notify-jay       golem-style mail/journal pager (headless boxes)
+#   notify-send      desktop notification (a logged-in X/Wayland session)
+#   otherwise        stdout only (chezmoi-autoupdate already logs it; under
+#                    systemd that lands in journalctl --user -u chezmoi-autoupdate)
+#
+# Per-box admins: add a channel in a {{ "{{ if eq .chezmoi.hostname ... }}" }}
+# block below rather than editing chezmoi-autoupdate, and rather than editing
+# this file un-templated — a plain local edit here becomes a permanent chezmoi
+# conflict, and this helper would then never receive upstream fixes.
+#
+# Whatever a per-host block does, the message ALWAYS reaches stdout, so the
+# journal keeps a complete record of every run even when paging is throttled.
+set -u
+msg="${1:-chezmoi-autoupdate: (no message)}"
+# Set by a per-host block that owns paging on this box, whether or not it
+# actually sent this time — a throttled run must NOT fall through to the
+# generic channels and page by a second route.
+handled=0
+{{ if eq .chezmoi.hostname "bakkies" -}}
+# --- bakkies: a headless production mail server. No notify-jay, no desktop.
+# Same two channels as the root nag scripts on this host
+# (~/w/docker-compose/scripts/cert-expiry-nag.sh), and the same stance on
+# cadence: check often, nag rarely. The timer runs every 30 minutes, but a
+# fault that persists — an upstream/local conflict is the common one, and it
+# stays until a human resolves it — pages at most once a day.
+#
+# The throttle stamp is keyed by a hash of the message, so a NEW problem pages
+# immediately instead of being swallowed by an unrelated one from this morning.
+MAIL_TO="yair@albanialink.com"
+MAIL_FROM="chezmoi-autoupdate@albanialink.com"
+SMTP_URL="smtp://127.0.0.1:25"
+OC_ALERT_LIB="/home/oc/.openclaw/workspace/scripts/alert-lib.sh"
+PUSH_THROTTLE_HOURS="${PUSH_THROTTLE_HOURS:-24}"
+STAMP_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/chezmoi-autoupdate"
+HOST="$(hostname -s 2>/dev/null || hostname)"
+
+key="$(printf '%s' "$msg" | cksum | cut -d' ' -f1)"
+stamp="$STAMP_DIR/last-push.$key"
+mkdir -p "$STAMP_DIR" 2>/dev/null || true
+now="$(date +%s)"
+last="$(cat "$stamp" 2>/dev/null || echo 0)"
+if [ "$(( now - last ))" -ge "$(( PUSH_THROTTLE_HOURS * 3600 ))" ]; then
+    curl --silent --show-error --max-time 25 \
+        --mail-from "$MAIL_FROM" --mail-rcpt "$MAIL_TO" --url "$SMTP_URL" -T - <<EOF >/dev/null 2>&1 || true
+From: ${HOST} chezmoi-autoupdate <${MAIL_FROM}>
+To: ${MAIL_TO}
+Subject: [${HOST}] chezmoi-autoupdate needs a human
+Date: $(date -R)
+Message-ID: <${key}.${now}@${HOST}.albanialink.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+${msg}
+
+--
+Checked every 30 min by chezmoi-autoupdate.timer; this nag is throttled to one
+per ${PUSH_THROTTLE_HOURS}h per distinct message. Full log:
+  journalctl --user -u chezmoi-autoupdate
+EOF
+    # Telegram reuses OpenClaw's alert-lib (direct Bot API, 0 tokens) as the
+    # `oc` user, the same way the root nag scripts do. -n so a box without
+    # passwordless sudo fails instantly instead of hanging on a password
+    # prompt that no timer-run process can ever answer.
+    if [ -f "$OC_ALERT_LIB" ]; then
+        sudo -n -u oc bash -c '. "$1" && alert_main "$2" "$3"' _ \
+            "$OC_ALERT_LIB" "$HOST chezmoi-autoupdate" "$msg" >/dev/null 2>&1 || true
+    fi
+    printf '%s\n' "$now" > "$stamp" 2>/dev/null || true
+    # Keep the stamp dir from growing a file per distinct message forever.
+    find "$STAMP_DIR" -name 'last-push.*' -mtime +30 -delete 2>/dev/null || true
+fi
+handled=1
+{{ end -}}
+if [ "$handled" -eq 0 ]; then
+    if command -v notify-jay >/dev/null 2>&1; then
+        notify-jay "chezmoi-autoupdate needs a human" "$msg" >/dev/null 2>&1
+    elif command -v notify-send >/dev/null 2>&1 && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+        notify-send -u normal "chezmoi-autoupdate" "$msg" >/dev/null 2>&1
+    fi
+fi
+printf '%s\n' "$msg"
+exit 0
