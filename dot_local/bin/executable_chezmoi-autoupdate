@@ -28,9 +28,21 @@ notify() { command -v chezmoi-autoupdate-notify >/dev/null 2>&1 && chezmoi-autou
 command -v chezmoi >/dev/null 2>&1 || { log "chezmoi not installed; nothing to do"; exit 0; }
 chezmoi source-path >/dev/null 2>&1 || { log "no chezmoi source repo; nothing to do"; exit 0; }
 
-# 1) Fast-forward pull. Fails (non-zero) if local has diverged from origin.
-if ! out=$(chezmoi git -- pull --ff-only 2>&1); then
-    notify "$host: chezmoi pull --ff-only failed (history diverged or auth?). Resolve by hand. [$out]"
+# 1) Fast-forward pull. Before that: uncommitted work in the SOURCE tree is
+#    by far the most common reason a pull fails on a box whose human edits
+#    dotfiles, and it is not "diverged or auth" — say what it is. Apply still
+#    runs below (the tree is usable); only the pull is skipped.
+dirty=$(chezmoi git -- status --porcelain --untracked-files=no 2>/dev/null | head -5)
+if [ -n "$dirty" ]; then
+    notify "$host: uncommitted work in the chezmoi source tree — pull skipped until it is committed or stashed: $(printf '%s' "$dirty" | tr '\n' ';')"
+elif ! out=$(chezmoi git -- pull --ff-only 2>&1); then
+    case "$out" in
+        *"Permission denied"*|*"Could not read from remote"*|*"Host key verification"*)
+            notify "$host: chezmoi pull failed — git auth (deploy key / ssh_config gh-dotfiles / BatchMode). [$out]" ;;
+        *"Not possible to fast-forward"*|*"diverg"*)
+            notify "$host: chezmoi pull failed — local history diverged from origin; rebase or push by hand. [$out]" ;;
+        *)  notify "$host: chezmoi pull --ff-only failed. [$out]" ;;
+    esac
     exit 0
 fi
 
@@ -77,6 +89,9 @@ done
 # when their content changed, so this is a no-op when nothing is pending.
 if [ "$run_scripts" -eq 1 ]; then
     if out=$(chezmoi apply --include=scripts 2>&1); then applied+=("(scripts)"); else failed+=("(scripts) [$out]"); fi
+    # Scripts talk (the arming script's "lingering is off" hint above all):
+    # keep what they said, success or not — it was being thrown away.
+    [ -n "$out" ] && while IFS= read -r line; do log "script: $line"; done <<< "$out"
 fi
 [ "${#applied[@]}" -gt 0 ] && log "applied ${#applied[@]} entr(y|ies): ${applied[*]}"
 [ "${#failed[@]}" -gt 0 ] && notify "$host: chezmoi apply failed for: ${failed[*]}"
