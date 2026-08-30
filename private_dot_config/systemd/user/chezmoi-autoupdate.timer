@@ -1,0 +1,14 @@
+# chezmoi-autoupdate.timer — every 30 min, plus once shortly after login/boot.
+# NOTE: a --user timer only runs while the user has a systemd session. On a
+# headless box enable lingering once:  sudo loginctl enable-linger $USER
+[Unit]
+Description=chezmoi: periodic guarded dotfiles sync
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=30min
+RandomizedDelaySec=3min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

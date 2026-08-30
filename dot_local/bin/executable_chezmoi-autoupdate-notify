@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# chezmoi-autoupdate-notify — how chezmoi-autoupdate reaches a human.
+# Called with one message argument. Picks the best channel this box has:
+#   notify-jay      golem-style mail/journal pager (headless boxes)
+#   notify-send     desktop notification (a logged-in X/Wayland session)
+#   otherwise       stdout only (chezmoi-autoupdate already logs it; under
+#                   systemd that lands in journalctl --user -u chezmoi-autoupdate)
+# Per-box admins: add a channel here rather than editing chezmoi-autoupdate.
+set -u
+msg="${1:-chezmoi-autoupdate: (no message)}"
+if command -v notify-jay >/dev/null 2>&1; then
+    notify-jay "chezmoi-autoupdate needs a human" "$msg" >/dev/null 2>&1
+elif command -v notify-send >/dev/null 2>&1 && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+    notify-send -u normal "chezmoi-autoupdate" "$msg" >/dev/null 2>&1
+fi
+printf '%s\n' "$msg"
+exit 0

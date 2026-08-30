@@ -1,0 +1,13 @@
+# chezmoi-autoupdate.service — one guarded sync pass (see ~/.local/bin/chezmoi-autoupdate).
+# Managed by chezmoi; armed by run_onchange_after_arm-chezmoi-autoupdate.sh.
+[Unit]
+Description=chezmoi: pull dotfiles and apply the safe changes
+# don't fight a human running chezmoi by hand, and don't start before the network is plausible
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/chezmoi-autoupdate
+# git over ssh with a deploy key needs no agent; keep the env minimal and predictable
+Environment=GIT_TERMINAL_PROMPT=0
+Environment="GIT_SSH_COMMAND=ssh -o BatchMode=yes"
