@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# chezmoi modify_ script for ~/.claude/settings.json.
+#
+# WHY. This file is half fleet policy and half machine-local churn. Claude
+# Code rewrites it constantly (key order, "model", "effortLevel" flip with a
+# keystroke), so managing it as a plain chezmoi file made every box a permanent
+# MM conflict and turned someone's model switch into a fleet-wide default.
+# But the hooks (end-of-turn notification, temporal context, chezmoi re-add)
+# genuinely must reach every box.
+#
+# HOW. chezmoi hands us the CURRENT live file on stdin and writes whatever we
+# print. We overwrite only the FLEET-OWNED keys below and pass everything else
+# through untouched, so:
+#   - model / effortLevel / theme / tui / enabledPlugins stay per-box;
+#   - hooks etc. are exactly the fleet's, wholesale (a stale local hook does
+#     not linger);
+#   - when nothing fleet-owned differs, output == input and chezmoi sees no
+#     change → no more conflicts from Claude Code's own rewrites.
+# Requires jq; without it (or with a corrupt file) the live file is passed
+# through unchanged rather than clobbered.
+set -u
+command -v jq >/dev/null 2>&1 || exec cat
+# $(cat) would strip trailing newlines and make "verbatim" one byte short.
+live="$(cat; printf x)"; live="${live%x}"
+[ -n "$live" ] || live='{}'
+printf '%s' "$live" | jq -e . >/dev/null 2>&1 || { printf '%s' "$live"; exit 0; }
+
+fleet='{
+  "cleanupPeriodDays": 365,
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          { "type": "command", "command": "$HOME/.local/bin/claude-time-context", "timeout": 10 }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "$HOME/.local/bin/chezmoi-postedit-hook", "timeout": 30 }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          { "type": "command", "command": "$HOME/.local/bin/claude-turn-notify" }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          { "type": "command", "command": "$HOME/.local/bin/claude-turn-notify" }
+        ]
+      }
+    ]
+  },
+  "spinnerTipsEnabled": false,
+  "prefersReducedMotion": true,
+  "skipDangerousModePermissionPrompt": true
+}'
+
+# `. * $fleet` would deep-merge and let stale local hook entries survive; we
+# want the fleet's keys to REPLACE, and everything else to pass through.
+# If the merge changes nothing, emit the live bytes verbatim: re-serialising
+# through jq would differ in whitespace/key order and make chezmoi report the
+# file as modified on every run.
+if printf '%s' "$live" | jq -e --argjson fleet "$fleet" '. == (. + $fleet)' >/dev/null 2>&1; then
+    printf '%s' "$live"
+else
+    printf '%s' "$live" | jq --argjson fleet "$fleet" '. + $fleet'
+fi
