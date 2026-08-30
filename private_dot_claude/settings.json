@@ -49,11 +49,11 @@
       }
     ]
   },
+  "enabledPlugins": {},
   "spinnerTipsEnabled": false,
-  "effortLevel": "high",
+  "effortLevel": "medium",
+  "tui": "default",
   "prefersReducedMotion": true,
   "skipDangerousModePermissionPrompt": true,
-  "enabledPlugins": {},
-  "theme": "dark",
-  "tui": "default"
+  "theme": "dark"
 }
