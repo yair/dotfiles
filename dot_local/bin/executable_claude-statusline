@@ -7,7 +7,7 @@
 # message (300 ms debounced) so it must be cheap: one jq pass, no git calls.
 #
 # Fields shown (absent/null fields are skipped, never printed as "null"):
-#   model  effort  ctx%   5h quota% (+time to reset)   7d quota%   [fast]   dir ⎇ branch
+#   model  effort  ctx%   5h quota% (+time to reset)   7d quota%   cache warm/cold   [fast]   dir ⎇ branch
 PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 command -v jq >/dev/null 2>&1 || { printf 'statusline: jq missing\n'; exit 0; }
 
@@ -26,6 +26,13 @@ jq -r --argjson now "$(date +%s)" '
     (.rate_limits.five_hour // empty
         | "5h " + pct(.used_percentage) + (.resets_at // null | if . == null then "" else " ↻" + eta(.) end)),
     (.rate_limits.seven_day // empty | "7d " + pct(.used_percentage)),
+    # prompt cache: warm shows TTL and time left (Claude Code re-runs us at
+    # expires_at, so this flips to cold by itself); cold shows in red.
+    (.prompt_cache // empty
+        | if .warm then
+            c("32"; "cache " + (.ttl // "") + "●")
+              + (.expires_at // null | if . == null then "" else " ↻" + eta(.) end)
+          else c("31"; "cache ○ cold") end),
     (if .fast_mode then c("33"; "fast") else empty end),
     ( (.workspace.current_dir // .cwd // "" | split("/") | last)
       + (.workspace.git_worktree // .worktree.branch // "" | if . == "" then "" else " ⎇ " + . end) )
