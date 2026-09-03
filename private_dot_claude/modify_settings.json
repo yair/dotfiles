@@ -12,8 +12,8 @@
 # print. We overwrite only the FLEET-OWNED keys below and pass everything else
 # through untouched, so:
 #   - model / effortLevel / theme / tui / enabledPlugins stay per-box;
-#   - hooks etc. are exactly the fleet's, wholesale (a stale local hook does
-#     not linger);
+#   - hooks, statusLine etc. are exactly the fleet's, wholesale (a stale local
+#     hook does not linger);
 #   - when nothing fleet-owned differs, output == input and chezmoi sees no
 #     change → no more conflicts from Claude Code's own rewrites.
 # Requires jq; without it (or with a corrupt file) the live file is passed
@@ -62,6 +62,7 @@ fleet='{
     ]
   },
   "spinnerTipsEnabled": false,
+  "statusLine": { "type": "command", "command": "$HOME/.local/bin/claude-statusline" },
   "prefersReducedMotion": true,
   "skipDangerousModePermissionPrompt": true
 }'

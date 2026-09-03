@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Claude Code status line. Registered as settings.json → statusLine.command
+# by the chezmoi modify_settings.json fleet block; distributed by chezmoi.
+#
+# Claude Code pipes a JSON snapshot on stdin (schema: code.claude.com/docs/en/statusline)
+# and prints whatever we emit, in dimmed colours. Runs on every assistant
+# message (300 ms debounced) so it must be cheap: one jq pass, no git calls.
+#
+# Fields shown (absent/null fields are skipped, never printed as "null"):
+#   model  effort  ctx%   5h quota% (+time to reset)   7d quota%   [fast]   dir ⎇ branch
+PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+command -v jq >/dev/null 2>&1 || { printf 'statusline: jq missing\n'; exit 0; }
+
+# Non-JSON on stdin (should never happen) prints nothing rather than a jq error.
+jq -r --argjson now "$(date +%s)" '
+  def c(code; s): "\u001b[" + code + "m" + s + "\u001b[0m";
+  # traffic-light colouring for a 0-100 percentage
+  def pct(p): p as $p | ($p | floor | tostring) + "%" |
+      if $p >= 85 then c("31"; .) elif $p >= 60 then c("33"; .) else c("32"; .) end;
+  def eta(t): ((t - $now) | if . < 0 then 0 else . end) as $s
+      | if $s >= 3600 then "\($s/3600|floor)h\(($s%3600)/60|floor)m" else "\($s/60|floor)m" end;
+
+  [ c("1;36"; .model.display_name // .model.id // "?"),
+    (.effort.level // empty | "eff " + c("35"; .)),
+    (.context_window.used_percentage // empty | "ctx " + pct(.)),
+    (.rate_limits.five_hour // empty
+        | "5h " + pct(.used_percentage) + (.resets_at // null | if . == null then "" else " ↻" + eta(.) end)),
+    (.rate_limits.seven_day // empty | "7d " + pct(.used_percentage)),
+    (if .fast_mode then c("33"; "fast") else empty end),
+    ( (.workspace.current_dir // .cwd // "" | split("/") | last)
+      + (.workspace.git_worktree // .worktree.branch // "" | if . == "" then "" else " ⎇ " + . end) )
+  ] | map(select(. != null and . != "")) | join(" │ ")
+' 2>/dev/null || true
