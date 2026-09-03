@@ -62,7 +62,7 @@ fleet='{
     ]
   },
   "spinnerTipsEnabled": false,
-  "statusLine": { "type": "command", "command": "$HOME/.local/bin/claude-statusline" },
+  "statusLine": { "type": "command", "command": "$HOME/.local/bin/claude-statusline", "refreshInterval": 60 },
   "prefersReducedMotion": true,
   "skipDangerousModePermissionPrompt": true
 }'
