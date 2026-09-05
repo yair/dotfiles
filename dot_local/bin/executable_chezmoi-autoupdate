@@ -58,6 +58,26 @@ mapfile -t apply_list < <(printf '%s\n' "$status" | awk 'NF && substr($0,1,1)=="
 # changed upstream AND edited locally -> genuine conflict, leave for a human
 mapfile -t conflict_list < <(printf '%s\n' "$status" | awk 'NF && substr($0,1,1)!=" " && substr($0,2,1)!=" "{print substr($0,4)}')
 
+# 3b) A file whose SOURCE is a modify_ script is EXPECTED to differ locally:
+#     the script merges the fleet-owned keys into the live file and passes the
+#     per-box rest through (see private_dot_claude/modify_settings.json), so
+#     "changed upstream AND edited locally" is its normal working state, not a
+#     human conflict. Applying runs the merge and clobbers nothing — without
+#     this reclassification every fleet-side settings change pages daily and
+#     never applies.
+if [ "${#conflict_list[@]}" -gt 0 ]; then
+    declare -a real_conflicts=()
+    for rel in "${conflict_list[@]}"; do
+        sp=$(chezmoi source-path -- "$HOME/$rel" 2>/dev/null || true)
+        case "$(basename -- "${sp:-none}")" in
+            modify_*) apply_list+=("$rel") ;;
+            *)        real_conflicts+=("$rel") ;;
+        esac
+    done
+    conflict_list=()
+    [ "${#real_conflicts[@]}" -gt 0 ] && conflict_list=("${real_conflicts[@]}")
+fi
+
 if [ "${#conflict_list[@]}" -gt 0 ]; then
     notify "$host: ${#conflict_list[@]} file(s) changed upstream AND edited locally — not applied: ${conflict_list[*]}"
 fi
