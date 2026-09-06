@@ -1,0 +1,21 @@
+#!/bin/sh
+# Split the dotfiles remote on HUMAN homedirs: fetch stays on the narrow
+# read-only deploy key (the gh-dotfiles ssh alias, BatchMode — what the
+# chezmoi-autoupdate timer uses), while pushes go via plain github.com and
+# the human's own default (password-protected) key. Agent accounts (oc, ...)
+# are deliberately left alone: their pushes SHOULD die on the read-only key.
+# Idempotent; re-runs when this file changes. version: 1
+{{ if eq .chezmoi.username "yair" -}}
+set -u
+src="${CHEZMOI_SOURCE_DIR:-$HOME/.local/share/chezmoi}"
+cur="$(git -C "$src" remote get-url origin 2>/dev/null || echo '')"
+case "$cur" in
+  *gh-dotfiles*)
+    git -C "$src" remote set-url --push origin git@github.com:yair/dotfiles.git \
+      && echo "chezmoi: origin push URL -> git@github.com:yair/dotfiles.git (fetch stays on the deploy key)"
+    ;;
+  *)
+    echo "chezmoi: origin ($cur) does not use the gh-dotfiles alias - push URL left alone"
+    ;;
+esac
+{{ end -}}
