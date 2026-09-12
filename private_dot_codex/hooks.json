@@ -1,13 +1,24 @@
 {
   "description": "Global temporal context for interactive Codex sessions.",
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "bash '/home/yair/.codex/herdr-agent-state.sh' session",
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "hooks": [
           {
-            "type": "command",
             "command": "$HOME/.local/bin/claude-time-context",
-            "timeout": 10
+            "timeout": 10,
+            "type": "command"
           }
         ]
       }
