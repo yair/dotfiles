@@ -5,7 +5,8 @@
 # Code rewrites it constantly (key order, "model", "effortLevel" flip with a
 # keystroke), so managing it as a plain chezmoi file made every box a permanent
 # MM conflict and turned someone's model switch into a fleet-wide default.
-# But the hooks (end-of-turn notification, temporal context, chezmoi re-add)
+# But the hooks (end-of-turn notification, temporal context, chezmoi re-add,
+# herdr session state)
 # genuinely must reach every box.
 #
 # HOW. chezmoi hands us the CURRENT live file on stdin and writes whatever we
@@ -59,6 +60,14 @@ fleet='{
           { "type": "command", "command": "$HOME/.local/bin/claude-turn-notify" }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "bash '"'"'__HOME__/.claude/hooks/herdr-agent-state.sh'"'"' session", "timeout": 10 }
+        ]
+      }
     ]
   },
   "spinnerTipsEnabled": false,
@@ -66,6 +75,12 @@ fleet='{
   "prefersReducedMotion": true,
   "skipDangerousModePermissionPrompt": true
 }'
+
+# The herdr SessionStart hook must be spelled with the literal absolute home
+# path: `herdr integration install claude` recognises its own entry only by
+# that exact string and appends a duplicate for any other spelling ($HOME
+# included). Expand it here, at apply time, so each box gets its own path.
+fleet="${fleet//__HOME__/$HOME}"
 
 # `. * $fleet` would deep-merge and let stale local hook entries survive; we
 # want the fleet's keys to REPLACE, and everything else to pass through.
