@@ -5,7 +5,7 @@
       {
         "hooks": [
           {
-            "command": "bash '/home/yair/.codex/herdr-agent-state.sh' session",
+            "command": "bash '{{ .chezmoi.homeDir }}/.codex/herdr-agent-state.sh' session",
             "timeout": 10,
             "type": "command"
           }
