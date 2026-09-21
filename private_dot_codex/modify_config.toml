@@ -1,0 +1,47 @@
+#!/usr/bin/env python3
+"""Share selected Codex preferences, never machine-local trust/session state.
+
+Chezmoi supplies the live config on stdin. Preserve unrelated values; return
+the original bytes when already converged so Codex rewrites cause no churn.
+On a real policy change TOML is reserialized (comments/formatting may change).
+Requires Python 3.11+ and chezmoi; errors preserve the live file.
+Edit this policy, not the generated home file, to change shared preferences.
+"""
+import copy
+import json
+from pathlib import Path
+import subprocess
+import sys
+
+live = sys.stdin.buffer.read()
+try:
+    import tomllib
+
+    current = tomllib.loads(live.decode())
+    wanted = copy.deepcopy(current)
+    wanted['notify'] = [str(Path.home() / '.local/bin/codex-turn-notify')]
+    wanted['approvals_reviewer'] = 'auto_review'
+    wanted.setdefault('features', {})['hooks'] = True
+    wanted.setdefault('tui', {}).update({
+        'notifications': ['approval-requested'],
+        'animations': False,
+        'show_tooltips': False,
+        'status_line': [
+            'model-with-reasoning', 'context-used', 'five-hour-limit',
+            'weekly-limit', 'fast-mode', 'current-dir', 'git-branch',
+        ],
+    })
+    if wanted != current:
+        result = subprocess.run(
+            ['chezmoi', 'execute-template', '--with-stdin',
+             '{{ .chezmoi.stdin | fromJson | toToml }}'],
+            input=json.dumps(wanted).encode(), capture_output=True,
+            check=True, timeout=10,
+        ).stdout
+        if tomllib.loads(result.decode()) != wanted:
+            raise ValueError('TOML round-trip changed configuration values')
+        live = result
+except Exception as exc:
+    # Avoid printing config contents or subprocess output, which may be private.
+    print('codex preferences: preserving config; ' + type(exc).__name__, file=sys.stderr)
+sys.stdout.buffer.write(live)

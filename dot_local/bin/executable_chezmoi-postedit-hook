@@ -10,7 +10,7 @@
 # Behaviour:
 #   - unmanaged file  -> silent, no output (ordinary repos are unaffected)
 #   - managed file    -> chezmoi re-add + a note telling the agent to commit
-#   - templated/enc.  -> NO re-add; warn that the home edit will be lost on apply
+#   - template/encrypted/modify-managed -> NO re-add; edit the source instead
 #
 # Always exits 0. Registered in dot_claude/settings.json. Distributed by chezmoi.
 
@@ -34,8 +34,8 @@ emit() {
 }
 
 case "$src" in
-    *.tmpl|*encrypted_*)
-        emit "chezmoi: '$file' is a TEMPLATED/ENCRYPTED chezmoi file (source: $src). Editing the home copy is a mistake — it will be OVERWRITTEN on the next 'chezmoi apply'. Edit the source instead, then run 'chezmoi apply'. Do not commit the home file."
+    *.tmpl|*encrypted_*|*/modify_*)
+        emit "chezmoi: '$file' is a TEMPLATE/ENCRYPTED/MODIFY-MANAGED chezmoi file (source: $src). Edit the source instead, then run 'chezmoi apply'; home edits may be overwritten. No re-add was performed. Do not commit the home file."
         ;;
 esac
 

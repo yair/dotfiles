@@ -1,6 +1,18 @@
 {
-  "description": "Global temporal context for interactive Codex sessions.",
+  "description": "Shared temporal context, Herdr registration and chezmoi edit feedback.",
   "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "^apply_patch$",
+        "hooks": [
+          {
+            "command": "$HOME/.local/bin/codex-chezmoi-postedit-hook",
+            "timeout": 30,
+            "type": "command"
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "hooks": [

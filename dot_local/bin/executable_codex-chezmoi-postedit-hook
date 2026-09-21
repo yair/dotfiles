@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+"""Codex PostToolUse adapter for chezmoi-managed apply_patch edits.
+
+Never blocks, commits, or re-adds templates/encrypted/modify-managed files.
+Shell writes are outside this hook's coverage (as with Claude's Edit|Write).
+"""
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+
+
+def run(*args):
+    return subprocess.run(args, capture_output=True, text=True, timeout=5)
+
+
+def main():
+    if not shutil.which('chezmoi'):
+        return
+    event = json.load(sys.stdin)
+    if event.get('tool_name') != 'apply_patch':
+        return
+    # PostToolUse may also report failures: don't absorb pre-existing edits
+    # after an unsuccessful patch. Unknown output formats fail closed.
+    if 'Success. Updated the following files:' not in json.dumps(event.get('tool_response')):
+        return
+    patch = event.get('tool_input', {}).get('command', '')
+    if not isinstance(patch, str) or not patch.startswith('*** Begin Patch\n'):
+        return
+    cwd = Path(event.get('cwd') or os.getcwd())
+    paths = {}
+    # Markers cannot be confused with hunk contents, which start with +, -, or space.
+    for line in patch.splitlines():
+        for marker, action in [('*** Add File: ', 'edit'),
+                               ('*** Update File: ', 'edit'),
+                               ('*** Delete File: ', 'delete'),
+                               ('*** Move to: ', 'move')]:
+            if line.startswith(marker):
+                path = Path(os.path.abspath(cwd / line[len(marker):]))
+                paths[path] = action
+                break
+    notes = []
+    for path, action in paths.items():
+        try:
+            result = run('chezmoi', 'source-path', '--', str(path))
+            if result.returncode:
+                continue
+            source = result.stdout.strip()
+            parts = Path(source).parts
+            protected = (source.endswith('.tmpl') or
+                         any('encrypted_' in p or p.startswith('modify_') for p in parts))
+            if protected:
+                notes.append(f'{path}: generated/template/encrypted source {source}; '
+                             'not re-added. Edit the source and apply it; home edits may be overwritten.')
+            elif action in ('delete', 'move') or not os.path.lexists(path):
+                notes.append(f'{path}: managed source {source}; deletion/rename needs explicit '
+                             'source reconciliation. No automatic forget, remove, or add performed.')
+            elif run('chezmoi', 're-add', '--', str(path)).returncode == 0:
+                notes.append(f'{path}: re-added to {source}.')
+            else:
+                notes.append(f'{path}: re-add failed; reconcile {source} manually.')
+        except (OSError, subprocess.TimeoutExpired):
+            notes.append(f'{path}: chezmoi check failed; reconcile manually.')
+    if notes:
+        context = ('chezmoi: ' + '\n'.join(notes) +
+                   '\nReview only this change in the dotfiles source repository and commit '
+                   'the logical change when complete. Do not stage unrelated edits; the user pushes.')
+        print(json.dumps({'hookSpecificOutput': {
+            'hookEventName': 'PostToolUse', 'additionalContext': context}}))
+
+
+try:
+    main()
+except Exception:
+    # Malformed input or missing dependencies must never interrupt agent work.
+    pass
