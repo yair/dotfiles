@@ -16,18 +16,38 @@ def run(*args):
     return subprocess.run(args, capture_output=True, text=True, timeout=5)
 
 
+def warn(message):
+    # Visible to both the operator and model. Do not echo tool output or paths
+    # from malformed input; diagnostics must not leak file contents/secrets.
+    message = 'chezmoi sync skipped: ' + message
+    print(message, file=sys.stderr)
+    print(json.dumps({
+        'systemMessage': message,
+        'hookSpecificOutput': {
+            'hookEventName': 'PostToolUse', 'additionalContext': message,
+        },
+    }))
+
+
 def main():
-    if not shutil.which('chezmoi'):
-        return
     event = json.load(sys.stdin)
     if event.get('tool_name') != 'apply_patch':
+        return
+    if not shutil.which('chezmoi'):
+        warn('chezmoi is not on PATH. Restore it and reconcile managed edits manually.')
         return
     # PostToolUse may also report failures: don't absorb pre-existing edits
     # after an unsuccessful patch. Unknown output formats fail closed.
     if 'Success. Updated the following files:' not in json.dumps(event.get('tool_response')):
+        warn('could not confirm apply_patch success. The patch may have failed or '
+             'Codex output may have changed. No files were re-added. Inspect the '
+             'tool result; if files changed, reconcile managed files manually and '
+             'check this hook for Codex compatibility.')
         return
     patch = event.get('tool_input', {}).get('command', '')
     if not isinstance(patch, str) or not patch.startswith('*** Begin Patch\n'):
+        warn('unrecognized apply_patch input. No files were re-added; check hook '
+             'compatibility and reconcile managed edits manually.')
         return
     cwd = Path(event.get('cwd') or os.getcwd())
     paths = {}
@@ -73,6 +93,7 @@ def main():
 
 try:
     main()
-except Exception:
-    # Malformed input or missing dependencies must never interrupt agent work.
-    pass
+except Exception as exc:
+    # Stay nonblocking, but make input/protocol failures visible.
+    warn('hook failed (' + type(exc).__name__ + '). No further sync was attempted; '
+         'inspect this hook and reconcile managed edits manually.')
