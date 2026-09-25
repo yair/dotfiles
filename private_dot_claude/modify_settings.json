@@ -6,8 +6,8 @@
 # keystroke), so managing it as a plain chezmoi file made every box a permanent
 # MM conflict and turned someone's model switch into a fleet-wide default.
 # But the hooks (end-of-turn notification, temporal context, chezmoi re-add,
-# herdr session state)
-# genuinely must reach every box.
+# herdr session state, and the HandWave personal-data guard, which is a
+# no-op on boxes without ~/.handwave/hooks) genuinely must reach every box.
 #
 # HOW. chezmoi hands us the CURRENT live file on stdin and writes whatever we
 # print. We overwrite only the FLEET-OWNED keys below and pass everything else
@@ -37,11 +37,25 @@ fleet='{
         ]
       }
     ],
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          { "type": "command", "command": "g=$HOME/.handwave/hooks/personal-data-guard.py; [ -x \"$g\" ] && exec \"$g\" pre; exit 0", "timeout": 15 }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
         "hooks": [
           { "type": "command", "command": "$HOME/.local/bin/chezmoi-postedit-hook", "timeout": 30 }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "g=$HOME/.handwave/hooks/personal-data-guard.py; [ -x \"$g\" ] && exec \"$g\" post; exit 0", "timeout": 15 }
         ]
       }
     ],
