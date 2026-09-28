@@ -11,6 +11,16 @@
             "type": "command"
           }
         ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f \"$HOME/.handwave/hooks/codex-personal-data-hook.py\" ]; then /usr/bin/timeout --kill-after=1s 10s /usr/bin/python3 \"$HOME/.handwave/hooks/codex-personal-data-hook.py\" codex-post; rc=$?; if [ \"$rc\" -ne 0 ]; then echo \"personal-data-guard: watchdog or supervisor failure; operation/output withheld.\" >&2; exit 2; fi; elif [ \"$(hostname -s)\" = zhizi ] || [ -d \"$HOME/w/hw/personal-data\" ]; then echo \"personal-data-guard: required guard is missing; operation/output withheld.\" >&2; exit 2; fi",
+            "timeout": 30
+          }
+        ]
       }
     ],
     "SessionStart": [
@@ -31,6 +41,18 @@
             "command": "$HOME/.local/bin/claude-time-context",
             "timeout": 10,
             "type": "command"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f \"$HOME/.handwave/hooks/codex-personal-data-hook.py\" ]; then /usr/bin/timeout --kill-after=1s 10s /usr/bin/python3 \"$HOME/.handwave/hooks/codex-personal-data-hook.py\" codex-pre; rc=$?; if [ \"$rc\" -ne 0 ]; then echo \"personal-data-guard: watchdog or supervisor failure; operation/output withheld.\" >&2; exit 2; fi; elif [ \"$(hostname -s)\" = zhizi ] || [ -d \"$HOME/w/hw/personal-data\" ]; then echo \"personal-data-guard: required guard is missing; operation/output withheld.\" >&2; exit 2; fi",
+            "timeout": 30
           }
         ]
       }

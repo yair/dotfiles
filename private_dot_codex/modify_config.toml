@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Share selected Codex preferences, never machine-local trust/session state.
+"""Share selected Codex preferences and two reviewed guard definitions.
+
+All other machine-local trust and session state is preserved.
 
 Chezmoi supplies the live config on stdin. Preserve unrelated values; return
 the original bytes when already converged so Codex rewrites cause no churn.
@@ -22,6 +24,17 @@ try:
     wanted['notify'] = [str(Path.home() / '.local/bin/codex-turn-notify')]
     wanted['approvals_reviewer'] = 'auto_review'
     wanted.setdefault('features', {})['hooks'] = True
+    # Trust only these reviewed hook definitions, never arbitrary future edits.
+    # Hashes were obtained from Codex 0.158 hooks/list after inspecting the
+    # deployed hooks.json. Script changes do not change a definition hash.
+    guard_hashes = {
+        'pre_tool_use:0:0': 'sha256:3473f20eb089a47f039342864434a8e09728e669d2cd8466fad2c02bf72c070d',
+        'post_tool_use:1:0': 'sha256:2835a4cd81016b480835e4ac468c9a72694d709fb00f5a9d5fd651a188f8da1e',
+    }
+    states = wanted.setdefault('hooks', {}).setdefault('state', {})
+    for suffix, digest in guard_hashes.items():
+        key = str(Path.home() / '.codex/hooks.json') + ':' + suffix
+        states.setdefault(key, {})['trusted_hash'] = digest
     wanted.setdefault('tui', {}).update({
         'notifications': ['approval-requested'],
         'animations': False,
