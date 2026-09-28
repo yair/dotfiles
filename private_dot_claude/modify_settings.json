@@ -41,7 +41,7 @@ fleet='{
       {
         "matcher": "",
         "hooks": [
-          { "type": "command", "command": "g=$HOME/.handwave/hooks/personal-data-guard.py; [ -x \"$g\" ] && exec \"$g\" pre; exit 0", "timeout": 15 }
+          { "type": "command", "command": "g=$HOME/.handwave/hooks/personal-data-guard.py; if [ -x \"$g\" ]; then exec \"$g\" pre; elif [ -d \"$HOME/w/hw/personal-data\" ]; then printf %s '"'"'{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"personal-data-guard is missing on a machine that holds HandWave personal data; every tool call is refused until ~/.handwave/hooks/personal-data-guard.py is restored.\"}}'"'"'; fi; exit 0", "timeout": 60 }
         ]
       }
     ],
@@ -55,7 +55,7 @@ fleet='{
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "g=$HOME/.handwave/hooks/personal-data-guard.py; [ -x \"$g\" ] && exec \"$g\" post; exit 0", "timeout": 15 }
+          { "type": "command", "command": "g=$HOME/.handwave/hooks/personal-data-guard.py; [ -x \"$g\" ] && exec \"$g\" post; exit 0", "timeout": 60 }
         ]
       }
     ],
