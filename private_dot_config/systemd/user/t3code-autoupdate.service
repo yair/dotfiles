@@ -1,0 +1,9 @@
+# t3code-autoupdate.service — one guarded update pass (see ~/.local/bin/t3code-autoupdate).
+# Managed by chezmoi; armed by run_onchange_after_arm-t3code-autoupdate.sh.
+[Unit]
+Description=t3code: move to the newest stable release when no agent is working
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/t3code-autoupdate

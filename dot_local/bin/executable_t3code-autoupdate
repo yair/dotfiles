@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+# t3code-autoupdate — keep this user's t3code backend on the newest STABLE
+# release, without ever restarting it under a working agent.
+#
+# `t3 update` does the real work: it installs the target in staging, trial-starts
+# it, and rolls back if the trial fails; when already current it does nothing.
+# What it cannot know is whether restarting now would cut off a turn in flight,
+# so that is the one thing decided here:
+#
+#   busy  = a `claude` or `codex` process lives in t3code.service's cgroup.
+#           t3 releases an idle agent process after 30 min, so "none" means
+#           nothing has worked in this backend for at least that long.
+#           Terminals opened in t3 do not count; agents only.
+#   busy  -> log and exit; the timer tries again next hour.
+#   idle  -> t3 update --channel stable --yes.
+#
+# Stable only: the store-published mobile apps cannot connect to nightlies.
+# Failures page through chezmoi-autoupdate-notify (NOTIFY_SOURCE names us).
+# Always exits 0; a no-op for a user without t3code.service.
+
+set -u
+PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+
+host=$(hostname -s 2>/dev/null || echo "?")
+who="$(id -un)@$host"
+unit=t3code.service
+log()    { printf '%s t3code-autoupdate[%s]: %s\n' "$(date '+%F %T')" "$who" "$*"; }
+notify() {
+    command -v chezmoi-autoupdate-notify >/dev/null 2>&1 &&
+        NOTIFY_SOURCE=t3code-autoupdate chezmoi-autoupdate-notify "$*" >/dev/null 2>&1
+    log "NOTIFY: $*"
+}
+# The launcher's own record of what the service runs. `t3 service status` is no
+# use here: when the CLI and the service differ it says only "needs an update".
+service_version() {
+    sed -n 's/.*"activeVersion": *"\([^"]*\)".*/\1/p' \
+        "${T3CODE_HOME:-$HOME/.t3}/runtime/service-state.json" 2>/dev/null | head -1
+}
+
+systemctl --user cat "$unit" >/dev/null 2>&1 || { log "no $unit for this user; nothing to do"; exit 0; }
+command -v npx >/dev/null 2>&1 || { notify "$who: t3code-autoupdate cannot run: npx is not on PATH"; exit 0; }
+
+# The port is the unit's T3CODE_PORT (set by the host's bind drop-in), else
+# t3's default.
+port=$(systemctl --user show -p Environment --value "$unit" | tr ' ' '\n' | sed -n 's/^T3CODE_PORT=//p')
+port=${port:-3773}
+listening() { systemctl --user is-active --quiet "$unit" && ss -ltnH "sport = :$port" | grep -q .; }
+
+# Only update a server that is up. One that is still starting (the timer's
+# catch-up run right after boot) or restarting fails the update for nothing;
+# one that is down is systemd's to restart, not ours to page about hourly.
+if ! listening; then
+    log "$unit is not listening on :$port; not updating now"
+    exit 0
+fi
+
+cgroup=$(systemctl --user show -p ControlGroup --value "$unit" 2>/dev/null)
+procs="/sys/fs/cgroup${cgroup}/cgroup.procs"
+if [ -z "$cgroup" ] || [ ! -r "$procs" ]; then
+    # Can't tell whether an agent is working: not updating is the safe answer.
+    notify "$who: t3code-autoupdate cannot read $unit's cgroup (${procs}); not updating"
+    exit 0
+fi
+busy=""
+while read -r pid; do
+    case "$(cat "/proc/$pid/comm" 2>/dev/null)" in
+        claude|codex) busy="$busy $pid" ;;
+    esac
+done < <(find "/sys/fs/cgroup${cgroup}" -name cgroup.procs -exec cat {} + 2>/dev/null)
+if [ -n "$busy" ]; then
+    log "agent processes running (pids:$busy); not updating now"
+    exit 0
+fi
+
+before=$(service_version)
+if ! out=$(npx --yes t3@latest update --channel stable --yes 2>&1); then
+    # The error line, not the stack trace under it.
+    why=$(printf '%s\n' "$out" | grep -v -e 'npm notice' -e '^[[:space:]]*at ' | grep -i 'error' | head -2)
+    [ -n "$why" ] || why=$(printf '%s\n' "$out" | grep -v -e 'npm notice' -e '^[[:space:]]*at ' | tail -3)
+    notify "$who: t3 update failed (was ${before:-unknown}): $(printf '%s' "$why" | tr '\n' ' ')"
+    exit 0
+fi
+after=$(service_version)
+if [ "$before" = "$after" ]; then
+    log "already current (${after:-unknown})"
+    exit 0
+fi
+# A changed version must come back up and listen again: "active" alone is
+# reached before the server binds.
+up=0
+for _ in $(seq 1 30); do
+    listening && { up=1; break; }
+    sleep 2
+done
+if [ "$up" -eq 1 ]; then
+    log "updated ${before:-unknown} -> ${after:-unknown}"
+else
+    notify "$who: t3code updated ${before:-unknown} -> ${after:-unknown} but nothing listens on :$port after 60 s"
+fi
+exit 0

@@ -1,0 +1,15 @@
+# t3code-autoupdate.timer — hourly tries in a quiet window. A long agent run
+# only delays the update to the next try (or the next morning); the script
+# itself is a no-op for a user without t3code.service.
+# NOTE: a --user timer only runs while the user has a systemd session. On a
+# headless box enable lingering once:  sudo loginctl enable-linger $USER
+[Unit]
+Description=t3code: hourly guarded update tries, 03:00-09:00
+
+[Timer]
+OnCalendar=*-*-* 03..09:00
+RandomizedDelaySec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
