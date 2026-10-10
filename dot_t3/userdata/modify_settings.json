@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# chezmoi modify_ script for ~/.t3/userdata/settings.json, t3code's server settings.
+#
+# WHY. t3 keeps these per backend (one per user per machine), so every new
+# backend started on t3's own defaults (Medium effort, its own title model,
+# no continue-after-restart) until someone remembered to click through the UI
+# on it. These few keys are Yair's preference everywhere, so the fleet owns
+# them. t3 also rewrites this file whenever a setting changes in its UI, which
+# is why this is a modify_ script and not a plain file.
+#
+# HOW. chezmoi hands us the live file on stdin; we overwrite only the
+# FLEET-OWNED keys below and pass everything else through. When nothing
+# fleet-owned differs, the live file goes back verbatim, so chezmoi sees no
+# change. t3 watches this file and picks an edit up without a restart.
+#
+# CONSEQUENCE. Changing a fleet-owned setting in t3's UI does not stick: the
+# next chezmoi sync puts it back. Change it here instead.
+#
+# Only reaches accounts where t3 is installed: .chezmoiignore skips ~/.t3
+# elsewhere. Requires jq; without it, or with a file that is not a JSON object,
+# the live file passes through untouched.
+set -u
+command -v jq >/dev/null 2>&1 || exec cat
+# $(cat) would strip trailing newlines and make "verbatim" one byte short.
+live="$(cat; printf x)"; live="${live%x}"
+[ -n "$live" ] || live='{}'
+printf '%s' "$live" | jq -e 'type == "object"' >/dev/null 2>&1 || { printf '%s' "$live"; exit 0; }
+
+fleet='{
+  "continueThreadsAfterServerUpdate": true,
+  "defaultModelSelection": {
+    "instanceId": "claudeAgent",
+    "model": "claude-opus-5-5",
+    "options": [ { "id": "effort", "value": "high" } ]
+  },
+  "defaultRuntimeMode": "auto",
+  "textGenerationModelSelection": {
+    "instanceId": "claudeAgent",
+    "model": "claude-haiku-5-5"
+  },
+  "providers": {
+    "cursor":   { "enabled": false },
+    "grok":     { "enabled": false },
+    "opencode": { "enabled": false }
+  }
+}'
+
+# Deep merge: objects merge key by key (other provider settings survive),
+# arrays and scalars are replaced by the fleet's.
+merged="$(printf '%s' "$live" | jq -S --indent 2 --argjson fleet "$fleet" '. * $fleet')" \
+    || { printf '%s' "$live"; exit 0; }
+if printf '%s' "$live" | jq -e --argjson m "$merged" '. == $m' >/dev/null 2>&1; then
+    printf '%s' "$live"
+else
+    printf '%s\n' "$merged"
+fi

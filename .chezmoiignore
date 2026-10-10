@@ -1,2 +1,7 @@
 .config/neomutt/passwords.gpg
 .config/shell/local.sh
+{{- /* t3code server settings only where t3 is installed; elsewhere, never create ~/.t3. */}}
+{{ if not (stat (joinPath .chezmoi.homeDir ".t3" "runtime")) -}}
+.t3
+.t3/**
+{{ end -}}
