@@ -82,35 +82,34 @@ if [ -z "$cgroup" ] || [ ! -r "$procs" ]; then
     notify "$who: t3code-autoupdate cannot read $unit's cgroup (${procs}); not updating"
     exit 0
 fi
-dirs=("/sys/fs/cgroup${cgroup}")
 # No ControlGroup, or none on disk, means no agent slice is running: no agent
 # has started since this user's manager did, or t3 runs without agent scopes
 # and its agents are in the service's cgroup above.
 agents=$(systemctl --user show -p ControlGroup --value app-t3code-agents.slice 2>/dev/null)
-if [ -n "$agents" ] && [ -d "/sys/fs/cgroup${agents}" ]; then
-    # Listable too: the child slices are found by globbing it.
-    if [ ! -r "/sys/fs/cgroup${agents}" ] || [ ! -r "/sys/fs/cgroup${agents}/cgroup.procs" ]; then
-        notify "$who: t3code-autoupdate cannot read t3's agents slice (/sys/fs/cgroup${agents}); not updating"
-        exit 0
-    fi
-    for d in "/sys/fs/cgroup${agents}"/app-t3code-agents-*.slice; do
-        [ -d "$d" ] && dirs+=("$d")
-    done
-fi
-# Anything under those cgroups that exists but cannot be read could hide an
-# agent: page and skip. A scope that vanishes mid-scan (an agent exiting) is
-# not an error.
-unreadable=$(find "${dirs[@]}" \( -type d -o -name cgroup.procs \) ! -readable -print -quit 2>/dev/null)
-if [ -n "$unreadable" ]; then
-    notify "$who: t3code-autoupdate cannot read $unreadable; not updating"
+[ -n "$agents" ] && [ -d "/sys/fs/cgroup${agents}" ] || agents=""
+# Every cgroup.procs in the service's cgroup and in the agent child slices;
+# -path skips the terminal scopes that sit directly in the agents slice.
+scan() {
+    LC_ALL=C find "/sys/fs/cgroup${cgroup}" -name cgroup.procs -exec cat {} +
+    [ -z "$agents" ] || LC_ALL=C find "/sys/fs/cgroup${agents}" \
+        -path '*/app-t3code-agents-*.slice/*' -name cgroup.procs -exec cat {} +
+}
+errs=$(mktemp) || { notify "$who: t3code-autoupdate cannot create a temporary file; not updating"; exit 0; }
+pids=$(scan 2>"$errs")
+# Any error but a scope vanishing mid-scan (an agent exiting) could hide an
+# agent: page and skip.
+why=$(grep -v 'No such file or directory' "$errs" | head -1)
+rm -f "$errs"
+if [ -n "$why" ]; then
+    notify "$who: t3code-autoupdate cannot scan t3's cgroups ($why); not updating"
     exit 0
 fi
 busy=""
-while read -r pid; do
+for pid in $pids; do
     case "$(cat "/proc/$pid/comm" 2>/dev/null)" in
         claude|codex) busy="$busy $pid" ;;
     esac
-done < <(find "${dirs[@]}" -name cgroup.procs -exec cat {} + 2>/dev/null)
+done
 if [ -n "$busy" ]; then
     log "agent processes running (pids:$busy); not updating now"
     exit 0
