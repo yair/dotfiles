@@ -14,6 +14,12 @@
 #   busy  -> log and exit; the timer tries again next hour.
 #   idle  -> t3 update --channel stable --yes.
 #
+# Only within a release line: a stable release that changes major.minor
+# (0.0.45 -> 0.1.0 was Orchestrator V2: a new database, re-pairing every
+# client, a new mobile app) is held and paged once per held version. Yair
+# applies it by hand, after which that line's patches update here again:
+#   npx --yes t3@latest update --channel stable --yes
+#
 # Stable only: the store-published mobile apps cannot connect to nightlies.
 # Failures page through chezmoi-autoupdate-notify (NOTIFY_SOURCE names us).
 # Always exits 0; a no-op for a user without t3code.service.
@@ -73,6 +79,23 @@ if [ -n "$busy" ]; then
 fi
 
 before=$(service_version)
+# Stable is npm's `latest` tag; read it first so a new release line is held.
+target=$(npm view t3@latest version 2>/dev/null)
+if [ -z "$target" ]; then
+    log "cannot read the stable version from npm; not updating now"
+    exit 0
+fi
+line() { printf '%s' "$1" | cut -d. -f1,2; }
+if [ -n "$before" ] && [ "$(line "$before")" != "$(line "$target")" ]; then
+    held="${XDG_STATE_HOME:-$HOME/.local/state}/t3code-autoupdate/held"
+    if [ "$(cat "$held" 2>/dev/null)" != "$target" ]; then
+        notify "$who: t3 $target is a new release line (running $before); held, not installed. Read its release notes, then: npx --yes t3@latest update --channel stable --yes"
+        mkdir -p "$(dirname "$held")" && printf '%s\n' "$target" > "$held"
+    else
+        log "holding $target (new release line; running $before)"
+    fi
+    exit 0
+fi
 if ! out=$(npx --yes t3@latest update --channel stable --yes 2>&1); then
     # The error line, not the stack trace under it.
     why=$(printf '%s\n' "$out" | grep -v -e 'npm notice' -e '^[[:space:]]*at ' | grep -i 'error' | head -2)
