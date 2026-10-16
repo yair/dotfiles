@@ -2,11 +2,23 @@
 # chezmoi modify_ script for ~/.t3/userdata/settings.json, t3code's server settings.
 #
 # WHY. t3 keeps these per backend (one per user per machine), so every new
-# backend started on t3's own defaults (Medium effort, its own title model,
-# no continue-after-restart) until someone remembered to click through the UI
-# on it. These few keys are Yair's preference everywhere, so the fleet owns
-# them. t3 also rewrites this file whenever a setting changes in its UI, which
-# is why this is a modify_ script and not a plain file.
+# backend started on t3's own defaults (no default model, Codex for titles,
+# full-access mode, no auto-resume after a usage limit) until someone
+# remembered to click through the UI on it. These few keys are Yair's
+# preference everywhere, so the fleet owns them. t3 also rewrites this file
+# whenever a setting changes in its UI, which is why this is a modify_ script
+# and not a plain file.
+#
+# ONLY NON-DEFAULT VALUES. Since 0.1.0 the server writes this file sparse: it
+# drops every key whose value equals its default, and it migrates the retired
+# `providers` map away (apps/server/src/serverSettings.ts,
+# stripDefaultServerSettings, migrateLegacyProviderSettings). A key owned here
+# at its default value is therefore deleted again after every sync, chezmoi
+# sees a diff on its next run, and the file flaps every 30 min. So the fleet
+# owns only values that differ from t3's defaults. Already the defaults, and so
+# not listed: continue threads after restarts (on), and Cursor, Grok and
+# OpenCode (disabled; to switch one off explicitly, use
+# providerInstances.<id>.enabled = false, never `providers`).
 #
 # HOW. chezmoi hands us the live file on stdin; we overwrite only the
 # FLEET-OWNED keys below and pass everything else through. When nothing
@@ -27,7 +39,7 @@ live="$(cat; printf x)"; live="${live%x}"
 printf '%s' "$live" | jq -e 'type == "object"' >/dev/null 2>&1 || { printf '%s' "$live"; exit 0; }
 
 fleet='{
-  "continueThreadsAfterServerUpdate": true,
+  "autoResumeLimitedThreads": true,
   "defaultModelSelection": {
     "instanceId": "claudeAgent",
     "model": "claude-opus-5-5",
@@ -37,15 +49,10 @@ fleet='{
   "textGenerationModelSelection": {
     "instanceId": "claudeAgent",
     "model": "claude-haiku-5-5"
-  },
-  "providers": {
-    "cursor":   { "enabled": false },
-    "grok":     { "enabled": false },
-    "opencode": { "enabled": false }
   }
 }'
 
-# Deep merge: objects merge key by key (other provider settings survive),
+# Deep merge: objects merge key by key (keys we do not own survive),
 # arrays and scalars are replaced by the fleet's.
 merged="$(printf '%s' "$live" | jq -S --indent 2 --argjson fleet "$fleet" '. * $fleet')" \
     || { printf '%s' "$live"; exit 0; }

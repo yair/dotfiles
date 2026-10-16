@@ -7,12 +7,22 @@
 # What it cannot know is whether restarting now would cut off a turn in flight,
 # so that is the one thing decided here:
 #
-#   busy  = a `claude` or `codex` process lives in t3code.service's cgroup.
+#   busy  = a `claude` or `codex` process lives in one of t3's agent slices
+#           (or, on a server without agent scopes, in t3code.service's cgroup).
 #           t3 releases an idle agent process after 30 min, so "none" means
 #           nothing has worked in this backend for at least that long.
 #           Terminals opened in t3 do not count; agents only.
 #   busy  -> log and exit; the timer tries again next hour.
 #   idle  -> t3 update --channel stable --yes.
+#
+# Where agents live. Since 0.1.0 t3 starts each agent in its own scope, outside
+# the service: app-t3code-agents.slice/app-t3code-agents-<hash>.slice/
+# t3code-<provider>-*.scope, one child slice per server state directory
+# (apps/server/src/process/agentScope.ts). Terminals sit directly in
+# app-t3code-agents.slice, so its child slices hold agents only. We scan every
+# child slice rather than computing our own hash: a path spelled differently
+# from t3's would silently scan an empty slice. A dev server's agents defer an
+# update too, which costs an hour at most.
 #
 # Only within a release line: a stable release that changes major.minor
 # (0.0.45 -> 0.1.0 was Orchestrator V2: a new database, re-pairing every
@@ -67,12 +77,26 @@ if [ -z "$cgroup" ] || [ ! -r "$procs" ]; then
     notify "$who: t3code-autoupdate cannot read $unit's cgroup (${procs}); not updating"
     exit 0
 fi
+dirs=("/sys/fs/cgroup${cgroup}")
+# No ControlGroup, or none on disk, means no agent slice is running: no agent
+# has started since this user's manager did, or t3 runs without agent scopes
+# and its agents are in the service's cgroup above.
+agents=$(systemctl --user show -p ControlGroup --value app-t3code-agents.slice 2>/dev/null)
+if [ -n "$agents" ] && [ -d "/sys/fs/cgroup${agents}" ]; then
+    if [ ! -r "/sys/fs/cgroup${agents}/cgroup.procs" ]; then
+        notify "$who: t3code-autoupdate cannot read t3's agents slice (/sys/fs/cgroup${agents}); not updating"
+        exit 0
+    fi
+    for d in "/sys/fs/cgroup${agents}"/app-t3code-agents-*.slice; do
+        [ -d "$d" ] && dirs+=("$d")
+    done
+fi
 busy=""
 while read -r pid; do
     case "$(cat "/proc/$pid/comm" 2>/dev/null)" in
         claude|codex) busy="$busy $pid" ;;
     esac
-done < <(find "/sys/fs/cgroup${cgroup}" -name cgroup.procs -exec cat {} + 2>/dev/null)
+done < <(find "${dirs[@]}" -name cgroup.procs -exec cat {} + 2>/dev/null)
 if [ -n "$busy" ]; then
     log "agent processes running (pids:$busy); not updating now"
     exit 0
