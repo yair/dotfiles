@@ -96,6 +96,14 @@ if [ -n "$agents" ] && [ -d "/sys/fs/cgroup${agents}" ]; then
         [ -d "$d" ] && dirs+=("$d")
     done
 fi
+# Anything under those cgroups that exists but cannot be read could hide an
+# agent: page and skip. A scope that vanishes mid-scan (an agent exiting) is
+# not an error.
+unreadable=$(find "${dirs[@]}" \( -type d -o -name cgroup.procs \) ! -readable -print -quit 2>/dev/null)
+if [ -n "$unreadable" ]; then
+    notify "$who: t3code-autoupdate cannot read $unreadable; not updating"
+    exit 0
+fi
 busy=""
 while read -r pid; do
     case "$(cat "/proc/$pid/comm" 2>/dev/null)" in
