@@ -88,7 +88,8 @@ dirs=("/sys/fs/cgroup${cgroup}")
 # and its agents are in the service's cgroup above.
 agents=$(systemctl --user show -p ControlGroup --value app-t3code-agents.slice 2>/dev/null)
 if [ -n "$agents" ] && [ -d "/sys/fs/cgroup${agents}" ]; then
-    if [ ! -r "/sys/fs/cgroup${agents}/cgroup.procs" ]; then
+    # Listable too: the child slices are found by globbing it.
+    if [ ! -r "/sys/fs/cgroup${agents}" ] || [ ! -r "/sys/fs/cgroup${agents}/cgroup.procs" ]; then
         notify "$who: t3code-autoupdate cannot read t3's agents slice (/sys/fs/cgroup${agents}); not updating"
         exit 0
     fi
