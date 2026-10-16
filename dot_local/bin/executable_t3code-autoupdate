@@ -8,7 +8,7 @@
 # so that is the one thing decided here:
 #
 #   busy  = a `claude` or `codex` process lives in one of t3's agent slices
-#           (or, on a server without agent scopes, in t3code.service's cgroup).
+#           or in t3code.service's own cgroup.
 #           t3 releases an idle agent process after 30 min, so "none" means
 #           nothing has worked in this backend for at least that long.
 #           Terminals opened in t3 do not count; agents only.
@@ -22,7 +22,12 @@
 # app-t3code-agents.slice, so its child slices hold agents only. We scan every
 # child slice rather than computing our own hash: a path spelled differently
 # from t3's would silently scan an empty slice. A dev server's agents defer an
-# update too, which costs an hour at most.
+# update too, which costs an hour at most. The service's own cgroup still
+# matters: t3 runs titles, commit messages and review guides (up to 15 min) as
+# unwrapped `claude -p` / `codex exec` there, and every agent when systemd
+# scopes are unavailable. Only Claude and Codex are enabled on this fleet;
+# another provider's agent (pi, opencode, grok, or Cursor inside the server
+# process itself) would not be seen.
 #
 # Only within a release line: a stable release that changes major.minor
 # (0.0.45 -> 0.1.0 was Orchestrator V2: a new database, re-pairing every
