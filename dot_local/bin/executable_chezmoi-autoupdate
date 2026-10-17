@@ -55,16 +55,18 @@ ahead=$(chezmoi git -- rev-list --count '@{u}..HEAD' 2>/dev/null || echo 0)
 status=$(chezmoi status 2>/dev/null)
 # upstream-changed, locally-clean -> apply these
 mapfile -t apply_list < <(printf '%s\n' "$status" | awk 'NF && substr($0,1,1)==" " && substr($0,2,1)!=" "{print substr($0,4)}')
-# changed upstream AND edited locally -> genuine conflict, leave for a human
+# edited locally AND differs from the source -> leave for a human. Both columns
+# are set by a local edit alone (col2 compares home with the source, not with
+# what was pulled), so this does not mean upstream changed.
 mapfile -t conflict_list < <(printf '%s\n' "$status" | awk 'NF && substr($0,1,1)!=" " && substr($0,2,1)!=" "{print substr($0,4)}')
 
 # 3b) A file whose SOURCE is a modify_ script is EXPECTED to differ locally:
 #     the script merges the fleet-owned keys into the live file and passes the
 #     per-box rest through (see private_dot_claude/modify_settings.json), so
-#     "changed upstream AND edited locally" is its normal working state, not a
-#     human conflict. Applying runs the merge and clobbers nothing — without
-#     this reclassification every fleet-side settings change pages daily and
-#     never applies.
+#     "edited locally and different from the source" is its normal working
+#     state, not a human conflict. Applying runs the merge and clobbers
+#     nothing — without this reclassification every fleet-side settings change
+#     pages daily and never applies.
 if [ "${#conflict_list[@]}" -gt 0 ]; then
     declare -a real_conflicts=()
     for rel in "${conflict_list[@]}"; do
@@ -79,7 +81,7 @@ if [ "${#conflict_list[@]}" -gt 0 ]; then
 fi
 
 if [ "${#conflict_list[@]}" -gt 0 ]; then
-    notify "$host: ${#conflict_list[@]} file(s) changed upstream AND edited locally — not applied: ${conflict_list[*]}"
+    notify "$host: ${#conflict_list[@]} file(s) edited locally and different from the dotfiles source — not applied: ${conflict_list[*]} (see: chezmoi diff)"
 fi
 
 if [ "${#apply_list[@]}" -eq 0 ]; then
