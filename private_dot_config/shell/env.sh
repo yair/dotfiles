@@ -46,6 +46,17 @@ export VISUAL=vim
 # Cap Node.js heap so Claude Code / TUI tools don't balloon.
 export NODE_OPTIONS="--max-old-space-size=4096"
 
+# --- systemd user manager ---------------------------------------------------
+# A shell reached with su/sudo has no login session, so `systemctl --user`
+# fails ("Failed to connect to bus") although the lingering manager runs.
+# Point at it only when it exists and the inherited value isn't ours.
+_rt="/run/user/$(id -u)"
+if [ -d "$_rt" ] && [ "$XDG_RUNTIME_DIR" != "$_rt" ]; then
+    export XDG_RUNTIME_DIR="$_rt"
+    export DBUS_SESSION_BUS_ADDRESS="unix:path=$_rt/bus"
+fi
+unset _rt
+
 # --- X session (only when DISPLAY is set) -----------------------------------
 # Force X11 (not Wayland) backend for GTK apps. Guarded so SSH sessions
 # without DISPLAY don't pick up misleading session-type env vars.
