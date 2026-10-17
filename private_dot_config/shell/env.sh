@@ -26,6 +26,10 @@ _prepend_path "$HOME/.local/bin"        # user scripts (brain-mcp, etc.)
 # Rust toolchain (rustup/cargo): idempotently adds ~/.cargo/bin to PATH.
 # Kept even when not actively writing Rust — intent to return soon.
 [ -r "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
+# Vite+ (vp, https://viteplus.dev; t3code's toolchain): puts its bin first and
+# its node/npm/pnpm/yarn/bun fallbacks last. Its installer appends this line,
+# unguarded, to .bashrc .profile .zshenv .zshrc; it belongs here, once.
+[ -r "$HOME/.config/vite-plus/env" ] && . "$HOME/.config/vite-plus/env"
 
 # --- Locale -----------------------------------------------------------------
 # LANG sets every LC_* category implicitly. We deliberately do NOT set LC_ALL
