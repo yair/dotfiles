@@ -16,6 +16,9 @@
 # conflicts, un-pushed commits). Wire it to your existing mail/Telegram. Absent
 # -> messages just go to the log (journald when run under systemd).
 #
+# Clones of the skills repo are fast-forwarded first, with the same guards
+# (see sync_skills below).
+#
 # Always exits 0; safe to run on any box (no-ops where chezmoi is absent).
 
 set -u
@@ -24,6 +27,49 @@ PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 host=$(hostname -s 2>/dev/null || echo "?")
 log()    { printf '%s chezmoi-autoupdate[%s]: %s\n' "$(date '+%F %T')" "$host" "$*"; }
 notify() { command -v chezmoi-autoupdate-notify >/dev/null 2>&1 && chezmoi-autoupdate-notify "$*" >/dev/null 2>&1; log "NOTIFY: $*"; }
+
+# 0) Skills ride along. The skills repo (github.com/yair/skills) is shared
+#    with the OpenClaw agents, so chezmoi does not own it; but every clone of
+#    it this home uses — ~/w/skills and whatever the skill links in
+#    ~/.claude/skills and ~/.codex/skills point into — is fast-forwarded here
+#    with the same guards as the dotfiles pull below. Links into other
+#    repositories (brain, engine, ...) are left alone.
+sync_skills() {
+    local -a candidates=()
+    local link top seen=" " dirty out ahead before
+    [ -d "$HOME/w/skills" ] && candidates+=("$HOME/w/skills")
+    for link in "$HOME"/.claude/skills/* "$HOME"/.codex/skills/*; do
+        [ -L "$link" ] && candidates+=("$(readlink -f -- "$link")")
+    done
+    for top in "${candidates[@]}"; do
+        top=$(git -C "$top" rev-parse --show-toplevel 2>/dev/null) || continue
+        case "$seen" in *" $top "*) continue ;; esac
+        seen="$seen$top "
+        case "$(git -C "$top" remote get-url origin 2>/dev/null)" in
+            *[:/]yair/skills|*[:/]yair/skills.git) ;;
+            *) continue ;;
+        esac
+        dirty=$(git -C "$top" status --porcelain --untracked-files=no 2>/dev/null | head -5)
+        if [ -n "$dirty" ]; then
+            notify "$host: uncommitted work in skills clone $top — pull skipped until it is committed or stashed: $(printf '%s' "$dirty" | tr '\n' ';')"
+            continue
+        fi
+        if ! git -C "$top" rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1; then
+            log "skills clone $top is not on a tracking branch; pull skipped"
+            continue
+        fi
+        before=$(git -C "$top" rev-parse HEAD)
+        if ! out=$(git -C "$top" pull --ff-only 2>&1); then
+            notify "$host: skills pull --ff-only failed in $top. [$out]"
+            continue
+        fi
+        ahead=$(git -C "$top" rev-list --count '@{u}..HEAD' 2>/dev/null || echo 0)
+        [ "${ahead:-0}" -gt 0 ] && notify "$host: $ahead un-pushed commit(s) in skills clone $top — push so other boxes get them."
+        [ "$(git -C "$top" rev-parse HEAD)" != "$before" ] &&
+            log "skills clone $top fast-forwarded to $(git -C "$top" log -1 --format='%h %s')"
+    done
+}
+sync_skills
 
 command -v chezmoi >/dev/null 2>&1 || { log "chezmoi not installed; nothing to do"; exit 0; }
 chezmoi source-path >/dev/null 2>&1 || { log "no chezmoi source repo; nothing to do"; exit 0; }
