@@ -1,9 +1,11 @@
 #!/bin/sh
 # t3-inbox lives in the skills repo (skill t3-inbox); this keeps it on PATH for
-# hooks, the engine and pollers. Without the skill, the hook stays silent.
-for dir in "$HOME/.claude/skills/t3-inbox" "$HOME/.codex/skills/t3-inbox" "$HOME/w/skills/t3-inbox"; do
+# hooks, the engine and pollers. Linking the skill into ~/.claude/skills or
+# ~/.codex/skills turns inboxes on for this home; a skills clone alone does not.
+# Without a link, the hook stays silent.
+for dir in "$HOME/.claude/skills/t3-inbox" "$HOME/.codex/skills/t3-inbox"; do
     [ -x "$dir/scripts/t3-inbox" ] && exec "$dir/scripts/t3-inbox" "$@"
 done
 [ "${1:-}" = hook ] && exit 0
-echo "t3-inbox: skill not installed (link it into ~/.claude/skills or clone ~/w/skills)" >&2
+echo "t3-inbox: skill not linked (ln -s ~/w/skills/t3-inbox ~/.claude/skills/t3-inbox)" >&2
 exit 127
