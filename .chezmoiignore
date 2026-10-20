@@ -1,3 +1,5 @@
+# How agents change this repository; not a dotfile.
+AGENTS.md
 .config/neomutt/passwords.gpg
 .config/shell/local.sh
 {{- /* t3code server settings only where t3 is installed; elsewhere, never create ~/.t3. */}}

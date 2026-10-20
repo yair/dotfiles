@@ -73,7 +73,8 @@ def main():
                          any('encrypted_' in p or p.startswith('modify_') for p in parts))
             if protected:
                 notes.append(f'{path}: generated/template/encrypted source {source}; '
-                             'not re-added. Edit the source and apply it; home edits may be overwritten.')
+                             'not re-added, and home edits may be overwritten. Make the change '
+                             'in that source on a branch worktree; do not run chezmoi apply.')
             elif action in ('delete', 'move') or not os.path.lexists(path):
                 notes.append(f'{path}: managed source {source}; deletion/rename needs explicit '
                              'source reconciliation. No automatic forget, remove, or add performed.')
@@ -84,9 +85,12 @@ def main():
         except (OSError, subprocess.TimeoutExpired):
             notes.append(f'{path}: chezmoi check failed; reconcile manually.')
     if notes:
+        repo = run('chezmoi', 'source-path').stdout.strip() or 'the chezmoi source'
         context = ('chezmoi: ' + '\n'.join(notes) +
-                   '\nReview only this change in the dotfiles source repository and commit '
-                   'the logical change when complete. Do not stage unrelated edits; the user pushes.')
+                   f'\nAny re-adds above are uncommitted work on main in the canonical dotfiles checkout {repo}, '
+                   'which chezmoi-autoupdate applies as it stands and will not pull past. Do not '
+                   f'commit there: move the change to a branch worktree and get it reviewed, as '
+                   f'{repo}/AGENTS.md describes. Yair pushes.')
         print(json.dumps({'hookSpecificOutput': {
             'hookEventName': 'PostToolUse', 'additionalContext': context}}))
 

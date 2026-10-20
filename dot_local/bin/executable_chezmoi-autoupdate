@@ -17,7 +17,8 @@
 # -> messages just go to the log (journald when run under systemd).
 #
 # Clones of the skills repo are fast-forwarded first, with the same guards
-# (see sync_skills below).
+# (see sync_skills below). The chezmoi source and the skills clones get their
+# versioned git hooks armed (see arm_hooks below).
 #
 # Always exits 0; safe to run on any box (no-ops where chezmoi is absent).
 
@@ -27,6 +28,26 @@ PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 host=$(hostname -s 2>/dev/null || echo "?")
 log()    { printf '%s chezmoi-autoupdate[%s]: %s\n' "$(date '+%F %T')" "$host" "$*"; }
 notify() { command -v chezmoi-autoupdate-notify >/dev/null 2>&1 && chezmoi-autoupdate-notify "$*" >/dev/null 2>&1; log "NOTIFY: $*"; }
+
+# Point a repository at its versioned git hooks. In the dotfiles and skills
+# repos, .githooks/ refuses agent commits on main and agent pushes (see
+# AGENTS.md there): a speed bump, since this home applies its local main as it
+# stands. Only when the checkout has .githooks/, core.hooksPath is unset, and
+# the clone has no hooks of its own that this would shadow.
+arm_hooks() {
+    local top=$1 own
+    [ -d "$top/.githooks" ] || return 0
+    [ -z "$(git -C "$top" config core.hooksPath)" ] || return 0
+    # -L: a symlinked hooks directory is searched, and hooks that are symlinks
+    # (dangling ones too) count as hooks.
+    own=$(find -L "$(git -C "$top" rev-parse --path-format=absolute --git-common-dir)/hooks" \
+        -mindepth 1 -maxdepth 1 ! -type d ! -name '*.sample' 2>/dev/null | head -1)
+    if [ -n "$own" ]; then
+        log "$top has its own git hooks; .githooks not armed"
+        return 0
+    fi
+    git -C "$top" config core.hooksPath .githooks && log "armed .githooks in $top"
+}
 
 # 0) Skills ride along. The skills repo (github.com/yair/skills) is shared
 #    with the OpenClaw agents, so chezmoi does not own it; but every clone of
@@ -67,6 +88,7 @@ sync_skills() {
         [ "${ahead:-0}" -gt 0 ] && notify "$host: $ahead un-pushed commit(s) in skills clone $top — push so other boxes get them."
         [ "$(git -C "$top" rev-parse HEAD)" != "$before" ] &&
             log "skills clone $top fast-forwarded to $(git -C "$top" log -1 --format='%h %s')"
+        arm_hooks "$top"
     done
 }
 sync_skills
@@ -91,6 +113,8 @@ elif ! out=$(chezmoi git -- pull --ff-only 2>&1); then
     esac
     exit 0
 fi
+
+arm_hooks "$(chezmoi source-path)"
 
 # 2) Un-pushed local commits are fine to apply (source already has them), but
 #    remind to push so they reach the other boxes.
